@@ -36,10 +36,11 @@ erpc_status_t SimpleServer::runInternal(void)
     // Handle the request.
     message_type_t msgType;
     uint32_t serviceId;
-    Hash methodId;
+    Hash methodId{};
     uint32_t sequence;
 
     erpc_status_t err = runInternalBegin(&codec, buff, msgType, serviceId, methodId, sequence);
+
     if (err == kErpcStatus_Success)
     {
         err = runInternalEnd(codec, msgType, serviceId, methodId, sequence);
@@ -49,7 +50,7 @@ erpc_status_t SimpleServer::runInternal(void)
 }
 
 erpc_status_t SimpleServer::runInternalBegin(Codec **codec, MessageBuffer &buff, message_type_t &msgType,
-                                             uint32_t &serviceId, Hash methodId, uint32_t &sequence)
+                                             uint32_t &serviceId, Hash& methodId, uint32_t &sequence)
 {
     erpc_status_t err = kErpcStatus_Success;
 

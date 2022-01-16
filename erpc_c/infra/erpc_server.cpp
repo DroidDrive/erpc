@@ -9,7 +9,6 @@
  */
 
 #include "erpc_server.h"
-
 #include "assert.h"
 
 using namespace erpc;
@@ -69,10 +68,10 @@ void Server::removeService(Service *service)
     }
 }
 
-erpc_status_t Server::readHeadOfMessage(Codec *codec, message_type_t &msgType, uint32_t &serviceId, Hash methodId,
+erpc_status_t Server::readHeadOfMessage(Codec *codec, message_type_t &msgType, uint32_t &serviceId, Hash &methodId,
                                         uint32_t& sequence)
 {
-    codec->startReadMessage(&msgType, &serviceId, methodId, &sequence);
+    codec->startReadMessage(&msgType, &serviceId, &methodId, &sequence);
     return codec->getStatus();
 }
 

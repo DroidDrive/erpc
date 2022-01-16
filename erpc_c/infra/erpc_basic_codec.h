@@ -219,7 +219,7 @@ public:
      * @param[out] sequence Returned sequence number to be sure that
      *                     received message is reply for current request.
      */
-    virtual void startReadMessage(message_type_t *type, uint32_t *service, Hash request,
+    virtual void startReadMessage(message_type_t *type, uint32_t *service, Hash* request,
                                   uint32_t *sequence) override;
 
     /*!

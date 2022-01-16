@@ -51,7 +51,7 @@ struct PayloadHeader{
     Hash id;
     uint8_t type = 0;
     PayloadHeader(){}
-    PayloadHeader(const uint8_t version, uint8_t service, const Hash hash, message_type_t type) : codecVersion{version}, id{hash}, service{service}, type{static_cast<uint8_t>(type & 0xff)}{
+    PayloadHeader(const uint8_t version, uint8_t service, const Hash hash, message_type_t type) : codecVersion{version}, service{service}, id{hash}, type{static_cast<uint8_t>(type & 0xff)}{
         // std::memcpy(id, hash, sizeof(Hash)-1);
     }
 };
@@ -301,7 +301,7 @@ public:
      * @param[in] sequence Returned sequence number to be sure that
      *                     received message is reply for current request.
      */
-    virtual void startReadMessage(message_type_t *type, uint32_t *service, Hash request, uint32_t *sequence) = 0;
+    virtual void startReadMessage(message_type_t *type, uint32_t *service, Hash* request, uint32_t *sequence) = 0;
 
     /*!
      * @brief Prototype for read boolean value.
