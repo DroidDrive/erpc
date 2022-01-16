@@ -206,7 +206,7 @@ static erpc_status_t {$callbackType.name}_shim(uint32_t serviceID, uint32_t func
 {% for iface in group.interfaces -- service subclass method impl %}
 
 // Call the correct server shim based on method unique ID.
-erpc_status_t {$iface.serviceClassName}::handleInvocation(erpc::Md5Hash methodId, uint32_t sequence, Codec * codec, MessageBufferFactory *messageFactory)
+erpc_status_t {$iface.serviceClassName}::handleInvocation(erpc::Hash methodId, uint32_t sequence, Codec * codec, MessageBufferFactory *messageFactory)
 {
     string hash(methodId);
 {%  if codecClass != "Codec" %}

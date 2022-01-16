@@ -66,7 +66,7 @@ erpc_status_t TransportArbitrator::receive(MessageBuffer *message)
     erpc_status_t err;
     message_type_t msgType;
     uint32_t service;
-    Md5Hash requestNumber;
+    Hash requestNumber;
     uint32_t sequence;
     PendingClientInfo *client;
 

@@ -169,7 +169,7 @@ void ClientManager::verifyReply(RequestContext &request)
 {
     message_type_t msgType;
     uint32_t service;
-    Md5Hash requestNumber;
+    Hash requestNumber;
     uint32_t sequence;
 
     // Some transport layers change the request's message buffer pointer (for things like zero
@@ -218,7 +218,7 @@ void ClientManager::releaseRequest(RequestContext &request)
     m_codecFactory->dispose(request.getCodec());
 }
 
-void ClientManager::callErrorHandler(erpc_status_t err, const Md5Hash functionID)
+void ClientManager::callErrorHandler(erpc_status_t err, const Hash functionID)
 {
     if (m_errorHandler != NULL)
     {
