@@ -13,7 +13,6 @@
 
 #include "erpc_common.h"
 #include "erpc_message_buffer.h"
-#include "erpc_transport.h"
 
 #include <cstring>
 #include <stdint.h>
@@ -42,8 +41,6 @@ typedef enum _message_type
 
 typedef void *funPtr;          // Pointer to functions
 typedef funPtr *arrayOfFunPtr; // Pointer to array of functions
-
-using Hash = uint32_t;
 
 struct PayloadHeader{
     const uint8_t codecVersion = 0;
