@@ -15,6 +15,7 @@
 #include "erpc_client_server_common.h"
 #include "erpc_codec.h"
 #include "erpc_config_internal.h"
+#include <functional>
 #if ERPC_NESTED_CALLS
 #include "erpc_server.h"
 #include "erpc_threading.h"
@@ -27,13 +28,15 @@
  */
 
 extern "C" {
-#endif
-
+#else
 typedef void (*client_error_handler_t)(erpc_status_t err,
                                        const erpc::Md5Hash functionID); /*!< eRPC error handler function type. */
+#endif
 
 #ifdef __cplusplus
+    using client_error_handler_t = std::function<void(erpc_status_t, const erpc::Md5Hash)>;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Classes
@@ -112,8 +115,8 @@ public:
      *
      * @param[in] request Request context to perform.
      */
-    virtual void performRequest(RequestContext &request);
-
+    virtual bool performRequest(RequestContext &request);
+    
     /*!
      * @brief This function releases request context.
      *
@@ -136,7 +139,10 @@ public:
      * @param[in] err Specify function status at the end of eRPC call.
      * @param[in] functionID Specify eRPC function call.
      */
-    void callErrorHandler(erpc_status_t err, const Md5Hash functionID);
+    void callErrorHandler(erpc_status_t err, const erpc::Md5Hash functionID);
+
+    void setId(size_t id){m_id = id;}
+    size_t getId(){return m_id;}
 
 #if ERPC_NESTED_CALLS
     /*!
@@ -160,6 +166,8 @@ protected:
     Transport *m_transport;                 //!< Transport layer to use.
     uint32_t m_sequence;                    //!< Sequence number.
     client_error_handler_t m_errorHandler;  //!< Pointer to function error handler.
+    size_t m_id;
+    
 #if ERPC_NESTED_CALLS
     Server *m_server;                     //!< Server used for nested calls.
     Thread::thread_id_t m_serverThreadId; //!< Thread in which server run function is called.
@@ -173,7 +181,7 @@ protected:
      *
      * @param[in] request Request context to perform.
      */
-    virtual void performClientRequest(RequestContext &request);
+    virtual bool performClientRequest(RequestContext &request);
 
 #if ERPC_NESTED_CALLS
     /*!
@@ -183,7 +191,7 @@ protected:
      *
      * @param[in] request Request context to perform.
      */
-    virtual void performNestedClientRequest(RequestContext &request);
+    virtual bool performNestedClientRequest(RequestContext &request);
 #endif
 
     //! @brief Validate that an incoming message is a reply.
@@ -204,6 +212,17 @@ private:
     ClientManager &operator=(const ClientManager &other); //!< Disable copy ctor.
 };
 
+
+enum RequestContextState
+{
+    INVALID = 0,
+    VALID = 1,
+    SENT = 2,
+    PENDING = 3,
+    DONE = 4,
+};
+ 
+
 /*!
  * @brief Encapsulates all information about a request.
  *
@@ -212,6 +231,11 @@ private:
 class RequestContext
 {
 public:
+    
+    RequestContext(): m_state(RequestContextState::INVALID)
+    {
+    }
+
     /*!
      * @brief Constructor.
      *
@@ -225,6 +249,7 @@ public:
     : m_sequence(sequence)
     , m_codec(codec)
     , m_oneway(argIsOneway)
+    , m_state(RequestContextState::VALID)
     {
     }
 
@@ -256,10 +281,19 @@ public:
      */
     void setIsOneway(bool oneway) { m_oneway = oneway; }
 
+    /*!
+     * @brief Get if the request is valid
+     *
+     * @return True if the request is valid
+     */
+    RequestContextState getState() { return m_state;}
+    void setState(RequestContextState state) { m_state = state; }
+
 protected:
     uint32_t m_sequence; //!< Sequence number. To be sure that reply belong to current request.
     Codec *m_codec;      //!< Inout codec. Codec for receiving and sending data.
     bool m_oneway;       //!< When true, request context will be oneway type (only send data).
+    RequestContextState m_state;
 };
 
 } // namespace erpc

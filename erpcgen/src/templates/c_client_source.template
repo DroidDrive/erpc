@@ -4,13 +4,15 @@
 {% endif %}
 {$commonHeader()}
 
-#include "erpc_client_manager.h"
+#include "erpc_client_setup.h"
+
+
 #if ERPC_ALLOCATION_POLICY == ERPC_ALLOCATION_POLICY_DYNAMIC
 #include "erpc_port.h"
 #endif
 #include "{$codecHeader}"
-extern "C"
-{
+// extern "C"
+//{
 #include "{$commonHeaderName}.h"
 {% if groupNames %}
 // import callbacks declaration from other groups
@@ -18,14 +20,23 @@ extern "C"
 #include "{$outputFilename}_{$name}.h"
 {%  endfor %}
 {% endif %}
-}
+//}
 
 {$checkVersion()}
 {$>checkCrc()}
 using namespace erpc;
 using namespace std;
 
-extern ClientManager *g_client;
+//extern ClientManager *g_client;
+
+static RequestContext pendingRequest_;
+
+{% for iface in group.interfaces %}
+{%  for fn in iface.functions  %}
+static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void" %}, {} {% endif %}};
+{%  endfor -- functions %}
+{% endfor -- iface %}
+
 {$generateCrcVariable()}
 {$> setSharedMemAddresses()}
 {% if unitTest %}
@@ -44,44 +55,50 @@ extern ClientManager *g_client;
 {% set clientIndent = "" >%}
 {% if generateErrorChecks %}
     erpc_status_t err = kErpcStatus_Success;
+    retObj{$fn.name}.valid = false;
 
 {% endif -- generateErrorChecks %}
 {% if fn.returnValue.type.isNotVoid %}
-    {$fn.returnValue.resultVariable}{% if fn.returnValue.isNullReturnType %} = NULL{%endif%};
-
 #if ERPC_PRE_POST_ACTION
     pre_post_action_cb preCB = g_client->getPreCB();
-    if (preCB)
-    {
+    if (preCB){
         preCB();
     }
 #endif
-
+    {% if fn.returnValue.isNullReturnType %} 
+        {$fn.returnValue.resultVariable} = &retObj{$fn.name}.value;
+    {% else %}
+        {$fn.returnValue.resultVariable};
+    {% endif -- isNullReturnType %}
 {% endif -- isNotVoid %}
+
     // Get a new request.
+    if(pendingRequest_.getState() == RequestContextState::INVALID){
 {% if !fn.isReturnValue %}
-    RequestContext request = g_client->createRequest(true);
+        pendingRequest_ = g_client->createRequest(true);
 {% else %}
-    RequestContext request = g_client->createRequest(false);
+        pendingRequest_ = g_client->createRequest(false);
 {% endif -- isReturnValue %}
+    }
 
     // Encode the request.
 {% if codecClass == "Codec" %}
-    {$codecClass} * codec = request.getCodec();
+    {$codecClass} * codec = pendingRequest_.getCodec();
 {% else %}
-    {$codecClass} * codec = static_cast<{$codecClass} *>(request.getCodec());
+    {$codecClass} * codec = static_cast<{$codecClass} *>(pendingRequest_.getCodec());
 {% endif %}
 
 {% if generateAllocErrorChecks %}
-{%  set clientIndent = "    " >%}
+{%  set clientIndent = "        " >%}
     if (codec == NULL)
     {
         err = kErpcStatus_MemoryError;
     }
     else
     {
+        if(pendingRequest_.getState() == RequestContextState::VALID){
 {% endif -- generateErrorChecks %}
-{$clientIndent}    codec->startWriteMessage({% if not fn.isReturnValue %}kOnewayMessage{% else %}kInvocationMessage{% endif %}, {$serverIDName}, {$functionIDName}, request.getSequence());
+{$clientIndent}    codec->startWriteMessage({% if not fn.isReturnValue %}kOnewayMessage{% else %}kInvocationMessage{% endif %}, {$serverIDName}, {$functionIDName}, pendingRequest_.getSequence());
 
 {% if fn.isSendValue %}
 {%  for param in fn.parameters if (param.serializedDirection == "" || param.serializedDirection == OutDirection || param.referencedName != "") %}
@@ -91,14 +108,21 @@ extern ClientManager *g_client;
 {%   else -- isNullable %}
 {%    if param.direction != OutDirection %}
 {$addIndent(clientIndent & "    ", param.coderCall.encode(param.coderCall))}
-
 {%    endif -- param != OutDirection %}
 {%   endif -- isNullable %}
 {%  endfor -- fn parameters %}
 {% endif -- isSendValue %}
+{%  set clientIndent = "    " >%}
+{$clientIndent}    }
+
 {$clientIndent}    // Send message to server
 {$clientIndent}    // Codec status is checked inside this function.
-{$clientIndent}    g_client->performRequest(request);
+{$clientIndent}    bool success = g_client->performRequest(pendingRequest_);
+{$clientIndent}    err = codec->getStatus();
+{$clientIndent}    if(success && pendingRequest_.getState() == RequestContextState::DONE)
+{%  set clientIndent = "        " >%}
+{$clientIndent}{
+
 {% if fn.isReturnValue %}
 {%  if fn.needTempVariableClient %}
 
@@ -116,51 +140,61 @@ extern ClientManager *g_client;
 {%   endif -- isNullable %}
 {%  endfor -- fn parametersToClient %}
 {%  if fn.returnValue.type.isNotVoid %}
-
 {%   if fn.returnValue.isNullable %}
 {$clientIndent}    bool isNull;
 {$addIndent(clientIndent & "    ", f_paramIsNullableDecode(fn.returnValue))}
 {%   else -- isNullable %}
+/*
 {$> addIndent(clientIndent & "    ", allocMem(fn.returnValue.firstAlloc))}
+*/
 {$addIndent(clientIndent & "    ", fn.returnValue.coderCall.decode(fn.returnValue.coderCall))}
 {%   endif -- isNullable %}
 {%  endif -- isNotVoid %}
 {% endif -- isReturnValue %}
 {% if generateErrorChecks %}
-
 {$clientIndent}    err = codec->getStatus();
 {% endif -- generateErrorChecks %}
 {%    if generateAllocErrorChecks %}
-    }
+        }
 {% endif -- generateAllocErrorChecks %}
+    }
 
-    // Dispose of the request.
-    g_client->releaseRequest(request);
+    // cleanup if request is valid, not pending (either because of error or success)
+    if(pendingRequest_.getState() == RequestContextState::DONE)
+    {
+
+        // Dispose of the request.
+        g_client->releaseRequest(pendingRequest_);
+
 {% if generateErrorChecks %}
-
-    // Invoke error handler callback function
-    g_client->callErrorHandler(err, {$functionIDName});
+        
+        // Invoke error handler callback function
+        g_client->callErrorHandler(err, {$functionIDName});
 {% endif -- generateErrorChecks %}
 {% if generateErrorChecks && fn.returnValue.type.isNotVoid %}
 
 #if ERPC_PRE_POST_ACTION
-    pre_post_action_cb postCB = g_client->getPostCB();
-    if (postCB)
-    {
-        postCB();
-    }
+        pre_post_action_cb postCB = g_client->getPostCB();
+        if (postCB)
+        {
+            postCB();
+        }
 #endif
 
 {%  if empty(fn.returnValue.errorReturnValue) == false && fn.returnValue.isNullReturnType == false %}
-
-    if (err != kErpcStatus_Success)
-    {
-        result = {$fn.returnValue.errorReturnValue};
-    }
+        retObj{$fn.name}.value = {$fn.returnValue.name};
+        if (err != kErpcStatus_Success){
+            retObj{$fn.name}.value = {$fn.returnValue.errorReturnValue};
+        }
 {%  endif %}
+{% else %}
 {% endif -- generateErrorChecks %}
+        retObj{$fn.name}.valid = true;
+        pendingRequest_.setState(RequestContextState::INVALID);
+    }
 
-    return{% if fn.returnValue.type.isNotVoid %} result{% endif -- isNotVoid %};
+    //return{% if fn.returnValue.type.isNotVoid %} result{% endif -- isNotVoid %};
+    return retObj{$fn.name};
 {% enddef --------------------------------------------------------------------------------- clientShimCode(fn, serverIDName, functionIDName) %}
 {% for callbackType in group.callbacks %}
 // Common function for serializing and deserializing callback functions of same type.
@@ -168,6 +202,7 @@ static {$callbackType.prototype};
 
 {% endfor %}
 {% for callbackType in group.callbacks %}
+
 // Common function for serializing and deserializing callback functions of same type.
 static {$callbackType.prototype}
 {
@@ -179,7 +214,7 @@ static {$callbackType.prototype}
 {%  for fn in iface.functions %}
 
 // {$iface.name} interface {$fn.name} function client shim.
-{$fn.prototype}
+{$fn.prototype2WithNamespace}
 {
 {%   if fn.isCallback %}
     {% if fn.returnValue.type.isNotVoid %}return {% endif %}{$fn.callbackFName}(k{$iface.name}_service_id, k{$iface.name}_{$fn.name}_id{% for param in fn.parameters %}, {$param.name}{% endfor %});
@@ -187,5 +222,12 @@ static {$callbackType.prototype}
 {$ clientShimCode(fn, "k"& iface.name & "_service_id", "k" & iface.name & "_" & fn.name & "_id") >}
 {%   endif -- fn.isCallback >%}
 }
+
+// Wrapper for shim function which converts a client id to a g client
+{$fn.prototypeWithIdAndNs}{
+    ClientManager* g_client = g_clients[id];
+    return {$fn.prototypeCallWithClient};
+}
+
 {%  endfor -- fn %}
 {% endfor -- iface %}

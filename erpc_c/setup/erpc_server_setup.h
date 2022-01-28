@@ -15,9 +15,13 @@
 #include "erpc_config_internal.h"
 #include "erpc_mbf_setup.h"
 #include "erpc_transport_setup.h"
+#include "erpc_simple_server.h"
+
 #if ERPC_PRE_POST_ACTION
 #include "erpc_pre_post_action.h"
 #endif
+
+#include <stddef.h>
 
 /*!
  * @addtogroup server_setup
@@ -28,6 +32,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 // API
 ////////////////////////////////////////////////////////////////////////////////
+#define MAX_SERVER_COUNT 10
+extern erpc::SimpleServer* g_servers[MAX_SERVER_COUNT];
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,14 +55,14 @@ typedef struct ServerType *erpc_server_t;
  *
  * @return Server object type.
  */
-erpc_server_t erpc_server_init(erpc_transport_t transport, erpc_mbf_t message_buffer_factory);
+int erpc_server_init(erpc_transport_t transport, erpc_mbf_t message_buffer_factory);
 
 /*!
  * @brief This function de-initializes server.
  *
  * This function de-initializes server and all components which it own.
  */
-void erpc_server_deinit(void);
+void erpc_server_deinit(size_t);
 
 /*!
  * @brief This function adds service to server.
@@ -65,14 +71,14 @@ void erpc_server_deinit(void);
  *
  * @param[in] service Service which contains implementations of functions called from client to server.
  */
-void erpc_add_service_to_server(void *service);
+void erpc_add_service_to_server(size_t, void *service);
 
 /*!
  * @brief This function removes service from server.
  *
  * @param[in] service Service which contains implementations of functions called from client to server.
  */
-void erpc_remove_service_from_server(void *service);
+void erpc_remove_service_from_server(size_t, void *service);
 
 /*!
  * @brief Can be used to set own crcStart number.
@@ -83,7 +89,7 @@ void erpc_remove_service_from_server(void *service);
  *
  * @param[in] crcStart Set start number for crc.
  */
-void erpc_server_set_crc(uint32_t crcStart);
+void erpc_server_set_crc(size_t, uint32_t crcStart);
 //@}
 
 //! @name Server control
@@ -97,7 +103,7 @@ void erpc_server_set_crc(uint32_t crcStart);
  *
  * @return Return one of status from erpc_common.h
  */
-erpc_status_t erpc_server_run(void);
+erpc_status_t erpc_server_run(size_t);
 
 /*!
  * @brief This function calls server implementation only once.
@@ -106,7 +112,7 @@ erpc_status_t erpc_server_run(void);
  *
  * @return Return one of status from erpc_common.h
  */
-erpc_status_t erpc_server_poll(void);
+erpc_status_t erpc_server_poll(size_t);
 
 /*!
  * @brief This functions should be used when client is calling quit server.
@@ -114,7 +120,7 @@ erpc_status_t erpc_server_poll(void);
  * This method sets server from On to OFF. When the server returns from its implementation,
  * erpc_server_deinit() function should be called.
  */
-void erpc_server_stop(void);
+void erpc_server_stop(size_t);
 
 #if ERPC_MESSAGE_LOGGING
 /*!
