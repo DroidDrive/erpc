@@ -26,7 +26,7 @@ using namespace erpc;
 
 const uint8_t BasicCodec::kBasicCodecVersion = 1;
 
-void BasicCodec::startWriteMessage(message_type_t type, uint32_t service, const Md5Hash request, uint32_t sequence)
+void BasicCodec::startWriteMessage(message_type_t type, uint32_t service, const Hash request, uint32_t sequence)
 {
     PayloadHeader header(kBasicCodecVersion, 
         static_cast<uint8_t>((service & 0xff)),
@@ -182,7 +182,7 @@ void BasicCodec::writeCallback(funPtr callback1, funPtr callback2)
     }
 }
 
-void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Md5Hash request, uint32_t *sequence)
+void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Hash* request, uint32_t *sequence)
 {
     PayloadHeader header;
     readData(&header, sizeof(PayloadHeader));
@@ -195,7 +195,8 @@ void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Md5Ha
     if (!m_status)
     {
         *service = header.service;
-        std::memcpy(request, header.id, sizeof(Md5Hash));
+        // std::memcpy(request, header.id, sizeof(Hash));
+        *request = header.id;
         *type = static_cast<message_type_t>(header.type);
 
         read(sequence);

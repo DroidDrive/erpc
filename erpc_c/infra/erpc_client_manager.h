@@ -30,8 +30,7 @@
 extern "C" {
 #else
 typedef void (*client_error_handler_t)(erpc_status_t err,
-                                       const erpc::Md5Hash functionID); /*!< eRPC error handler function type. */
-#endif
+                                       const erpc::Hash functionID); /*!< eRPC error handler function type. */
 
 #ifdef __cplusplus
     using client_error_handler_t = std::function<void(erpc_status_t, const erpc::Md5Hash)>;
@@ -139,11 +138,11 @@ public:
      * @param[in] err Specify function status at the end of eRPC call.
      * @param[in] functionID Specify eRPC function call.
      */
-    void callErrorHandler(erpc_status_t err, const erpc::Md5Hash functionID);
+    void callErrorHandler(erpc_status_t err, const Hash functionID);
 
     void setId(size_t id){m_id = id;}
     size_t getId(){return m_id;}
-
+    
 #if ERPC_NESTED_CALLS
     /*!
      * @brief This function sets server used for nested calls.

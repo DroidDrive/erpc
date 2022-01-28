@@ -13,7 +13,7 @@
 #include "ParseErrors.h"
 #include "annotations.h"
 #include "format_string.h"
-#include "md5.h"
+#include "crc24.h"
 
 #include <algorithm>
 #include <set>
@@ -1701,7 +1701,7 @@ data_map CGenerator::getFunctionTemplateData(Group *group, Function *fn)
     info["prototype2WithNamespace"] = getFunctionPrototypeWithClient(group, fn, getOutputName(fn), "remote::");
     info["name"] = getOutputName(fn);
     std::string specialProto = getFunctionPrototype(group, fn, "", true);
-    std::string hash = md5(specialProto);
+    std::string hash = std::to_string(crc24_decode(specialProto));
     info["id"] = hash;
     info["ret"] = getFunctionDataType(group, fn);
     info["genericRetStruct"] = getOutputName(fn) + "Return";
