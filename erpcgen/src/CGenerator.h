@@ -415,6 +415,8 @@ private:
      */
     std::string getErrorReturnValue(FunctionBase *fn);
 
+
+    std::string getFunctionDataType(Group *group, FunctionBase *fn);
     /*!
      * @brief This function return interface function prototype.
      *
@@ -425,7 +427,11 @@ private:
      * @return String prototype representation for given function.
      */
     std::string getFunctionPrototype(Group *group, FunctionBase *fn, std::string name = "", bool skipVariableNames = false);
-
+    std::string getFunctionPrototypeWithClient(Group *group, FunctionBase *fn, std::string name = "", std::string ns = "", bool skipVariableNames = false);
+    std::string getFunctionPrototypeCallWithClient(Group *group, FunctionBase *fn, std::string name = "", std::string ns = "", bool skipVariableNames = false);
+    std::string getFunctionPrototypeWithIdArgument(Group *group, FunctionBase *fn, std::string name = "", bool skipVariableNames = false);
+    std::string getFunctionPrototypeWithGenericType(Group *group, FunctionBase *fn, std::string name = "", std::string ns = "", bool addIdArg = false);
+    
     /*!
      * @brief This function return interface function representation called by server side.
      *
@@ -434,7 +440,7 @@ private:
      *
      * @return String representation for given function.
      */
-    std::string getFunctionServerCall(Function *fn, FunctionType *functionType = nullptr);
+    std::string getFunctionServerCall(Function *fn, FunctionType *functionType = nullptr, std::string ns="");
 
     /*!
      * @brief This function return name with guard.

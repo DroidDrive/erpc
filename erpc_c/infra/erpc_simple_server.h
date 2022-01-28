@@ -13,6 +13,8 @@
 
 #include "erpc_server.h"
 
+#include <stddef.h>
+
 /*!
  * @addtogroup infra_server
  * @{
@@ -64,6 +66,9 @@ public:
      * @brief This function sets server from ON to OFF
      */
     virtual void stop(void) override;
+
+    size_t getId(){ return m_id;}
+    void setId(size_t id) {m_id = id;}
 
 protected:
     /*!
@@ -120,6 +125,7 @@ protected:
     void disposeBufferAndCodec(Codec *codec);
 
     bool m_isServerOn; /*!< Information if server is ON or OFF. */
+    size_t m_id;
 };
 
 } // namespace erpc

@@ -179,8 +179,8 @@ ERPC_MANUALLY_CONSTRUCTED_STATIC({$iface.serviceClassName}, s_{$iface.serviceCla
 {%  set needFreeingCall = fn.returnValue.coderCall.freeingCall(fn.returnValue.coderCall) %}
 {%  set needFirstFreeingCall = fn.returnValue.firstFreeingCall1.firstFreeingCall(fn.returnValue.firstFreeingCall1) %}
 {%  if empty(needFreeingCall) == false || empty(needFirstFreeingCall) == false %}
-{$> addIndent("    ", needFreeingCall)}
-{$> addIndent("    ", needFirstFreeingCall)}
+//{$> addIndent("//    ", needFreeingCall)}
+//{$> addIndent("//    ", needFirstFreeingCall)}
 
 {%  endif -- !empty(needFreeingCall) || !empty(needFirstFreeingCall) %}
 {% endif -- notVoid %}

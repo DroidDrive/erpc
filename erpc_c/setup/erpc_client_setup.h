@@ -22,6 +22,7 @@
 #endif
 #include "erpc_client_manager.h"
 #include "erpc_transport_setup.h"
+#include <stddef.h>
 
 /*!
  * @addtogroup client_setup
@@ -32,6 +33,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 // API
 ////////////////////////////////////////////////////////////////////////////////
+#define MAX_CLIENT_COUNT 10
+extern erpc::ClientManager* g_clients[MAX_CLIENT_COUNT];
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,7 +54,7 @@ extern "C" {
  *
  * This function initializes client with all components necessary for serve client request.
  */
-void erpc_client_init(erpc_transport_t transport, erpc_mbf_t message_buffer_factory);
+int erpc_client_init(erpc_transport_t transport, erpc_mbf_t message_buffer_factory);
 
 /*!
  * @brief This function sets error handler function.
@@ -60,7 +63,7 @@ void erpc_client_init(erpc_transport_t transport, erpc_mbf_t message_buffer_fact
  *
  * @param[in] error_handler Pointer to function error handler.
  */
-void erpc_client_set_error_handler(client_error_handler_t error_handler);
+void erpc_client_set_error_handler(size_t, client_error_handler_t error_handler);
 
 /*!
  * @brief Can be used to set own crcStart number.
@@ -71,7 +74,7 @@ void erpc_client_set_error_handler(client_error_handler_t error_handler);
  *
  * @param[in] crcStart Set start number for crc.
  */
-void erpc_client_set_crc(uint32_t crcStart);
+void erpc_client_set_crc(size_t, uint32_t crcStart);
 
 #if ERPC_NESTED_CALLS
 /*!
@@ -124,7 +127,7 @@ void erpc_client_add_post_cb_action(pre_post_action_cb postCB);
  *
  * This function de-initializes client and all components which it own.
  */
-void erpc_client_deinit(void);
+void erpc_client_deinit(size_t);
 
 //@}
 

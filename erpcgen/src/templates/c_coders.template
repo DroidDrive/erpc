@@ -1,24 +1,31 @@
 {% def decodeBuiltinType(info) --------------- BuiltinType %}
 {% if info.builtinType == "kStringType" %}
 uint32_t {$info.stringLocalName}_len;
+{%  if (source == "server" && true) %}
+codec->readString(&{$info.stringLocalName}_len, (char**) &{$info.stringLocalName});
+{%  else %}
 char * {$info.stringLocalName}_local;
 codec->readString(&{$info.stringLocalName}_len, &{$info.stringLocalName}_local);
-{%  if ((source == "client" && info.withoutAlloc == false) or source == "server") %}
+{%   if source == "server" && false %}
 {$info.name} = ({$info.builtinTypeName}) erpc_malloc(({$info.stringAllocSize} + 1) * sizeof(char));
-{%   if generateAllocErrorChecks == true %}
+{%    if generateAllocErrorChecks == true %}
 if ({$info.name} == NULL)
 {
     codec->updateStatus(kErpcStatus_MemoryError);
 }
 else
 {
-{%   endif -- generateAllocErrorChecks == true %}
-{%  endif -- withoutAlloc %}
-{%  if (((source == "client" && info.withoutAlloc == false) or source == "server") && generateAllocErrorChecks == true) %}    {%  endif -- withoutAlloc %}memcpy({$info.name}, {$info.stringLocalName}_local, {$info.stringLocalName}_len);
-{%  if (((source == "client" && info.withoutAlloc == false) or source == "server") && generateAllocErrorChecks == true) %}    {%  endif -- withoutAlloc %}({$info.name})[{$info.stringLocalName}_len] = 0;
-{%  if (((source == "client" && info.withoutAlloc == false) or source == "server") && generateAllocErrorChecks == true) %}
+{%    endif -- generateAllocErrorChecks == true %}
+    memcpy({$info.name}, {$info.stringLocalName}_local, {$info.stringLocalName}_len);
+    ({$info.name})[{$info.stringLocalName}_len] = 0;
+{%    if generateAllocErrorChecks == true %}
 }
-{%  endif -- withoutAlloc && generateAllocErrorChecks %}
+{%    endif -- generateAllocErrorChecks %}
+{%   else %}
+memcpy({$info.name}, {$info.stringLocalName}_local, {$info.stringLocalName}_len);
+({$info.name})[{$info.stringLocalName}_len] = 0;
+{%   endif -- server && true %}
+{%  endif -- server && !false %}
 {% else %}
 {%  if source == "client" && info.pointerScalarTypes %}
 codec->read({$info.name});
@@ -123,7 +130,7 @@ else
 {% if codecClass == "BasicCodec" && !empty(info.builtinTypeName) >%}
 {$decodeData(info)>}
 {% else >%}
-for (uint32_t {$info.forLoopCount} = 0U; {$info.forLoopCount} < {$info.sizeTemp}; ++{$info.forLoopCount})
+for (uint32_t {$info.forLoopCount} = 0; {$info.forLoopCount} < {$info.sizeTemp}; ++{$info.forLoopCount})
 {
 {$addIndent("    ", info.protoNext.decode(info.protoNext))}
 }
@@ -232,7 +239,11 @@ codec->readData({$info.name}, {$info.sizeTemp} * sizeof({$info.builtinTypeName})
 {# Encode sending data #}
 {% def encodeBuiltinType(info) -----------------  %}
 {% if info.builtinType == "kStringType" %}
-codec->writeString(strlen((const char*){$info.name}), (const char*){$info.name});
+{%  if source == "client" && true %}
+codec->writeString(strlen((char*){$info.name}), (char*){$info.name});
+{% else %}
+codec->writeBinary(strlen((char*){$info.name}), (uint8_t*){$info.name});
+{%  endif -- source == "client && true %}
 {% else %}
 {%  if source == "client" && info.pointerScalarTypes %}
 codec->write(*{$info.name});
@@ -267,7 +278,7 @@ codec->startWriteList({% if source == "client" && info.pointerScalarTypes %}*{% 
 {% if codecClass == "BasicCodec" && !empty(info.builtinTypeName) >%}
 {$encodeData(info) >}
 {% else >%}
-for (uint32_t {$info.forLoopCount} = 0U; {$info.forLoopCount} < {% if source == "client" && info.pointerScalarTypes %}*{% endif %}{$info.size}; ++{$info.forLoopCount})
+for (uint32_t {$info.forLoopCount} = 0; {$info.forLoopCount} < {% if source == "client" && info.pointerScalarTypes %}*{% endif %}{$info.size}; ++{$info.forLoopCount})
 {
 {$addIndent("    ", info.protoNext.encode(info.protoNext))}
 }

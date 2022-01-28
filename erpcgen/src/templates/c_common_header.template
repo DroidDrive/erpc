@@ -4,6 +4,10 @@
 {% endif %}
 {$commonHeader()}
 
+#include "erpc_client_setup.h"
+
+using namespace erpc;
+
 #if !defined({$commonGuardMacro})
 #define {$commonGuardMacro}
 {% if usedUnionType %}
@@ -32,8 +36,8 @@
 {$>checkCrc()}
 {% endif -- not commonTypesFile %}
 {% if commonTypesFile == "" %}
-#if !defined(ERPC_TYPE_DEFINITIONS)
-#define ERPC_TYPE_DEFINITIONS
+//#if !defined(ERPC_TYPE_DEFINITIONS)
+//#define ERPC_TYPE_DEFINITIONS
 {% if not empty(enums) %}
 
 // Enumerators data types declarations
@@ -102,8 +106,17 @@ extern const {$c.typeAndName};{$c.ilComment}{$loop.addNewLineIfNotLast}
 {%  endfor -- consts %}
 {% endif -- consts %}
 
-#endif // ERPC_TYPE_DEFINITIONS
+//#endif // ERPC_TYPE_DEFINITIONS
 {% endif -- commonTypesFile %}
+
+{% for iface in group.interfaces %}
+{%  for fn in iface.functions  %}
+typedef struct {$fn.genericRetStruct}{
+    bool valid = false;
+    {% if fn.ret != "void" %} {$fn.ret} value; {% endif %}
+} {$fn.genericRetStruct}_t;
+{%  endfor -- functions %}
+{% endfor -- iface %}
 
 {% if not genCommonTypesFile %}
 {% for iface in group.interfaces %}
@@ -115,7 +128,7 @@ constexpr const char* k{$iface.name}_{$fn.name}_id = "{$fn.id}";
 {% endfor %}
 
 #if defined(__cplusplus)
-extern "C" {
+//extern "C" {
 #endif
 {% for iface in group.interfaces if iface.isNonExternalInterface == true %}
 
@@ -124,13 +137,21 @@ extern "C" {
 //@{
 {%  for fn in iface.functions if fn.isNonExternalFunction == true %}
 {$> fn.mlComment}
+namespace service{
 {$fn.prototype};{$fn.ilComment}{$loop.addNewLineIfNotLast}
+}
+
+//{$fn.prototype2};{$fn.ilComment}{$loop.addNewLineIfNotLast}
+namespace remote{
+{$fn.prototypeWithClient};{$fn.ilComment}{$loop.addNewLineIfNotLast}
+{$fn.prototypeWithId};
+}
 {%  endfor -- functions %}
 //@}{$iface.ilComment}
 {% endfor -- iface %}
 
 #if defined(__cplusplus)
-}
+//}
 #endif
 {% endif -- genCommonTypesFile %}
 

@@ -10,12 +10,12 @@
 #ifdef __cplusplus
 #include "erpc_server.h"
 #include "{$codecHeader}"
-extern "C"
-{
+//extern "C"
+//{
 #include "{$commonHeaderName}.h"
 #include <stdint.h>
 #include <stdbool.h>
-}
+//}
 
 {$checkVersion()}
 {$>checkCrc()}
@@ -40,7 +40,7 @@ private:
 };
 {% endfor -- iface %}
 
-extern "C" {
+//extern "C" {
 #else
 #include "{$commonHeaderName}.h"
 #endif // __cplusplus
@@ -60,7 +60,7 @@ void destroy_{$iface.serviceClassName}(void);
 
 {% endfor -- iface %}
 #ifdef __cplusplus
-}
+//}
 #endif // __cplusplus
 
 #endif // {$serverGuardMacro}
