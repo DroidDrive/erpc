@@ -241,11 +241,7 @@ void ClientManager::releaseRequest(RequestContext &request)
     m_codecFactory->dispose(request.getCodec());
 }
 
-<<<<<<< HEAD
-void ClientManager::callErrorHandler(erpc_status_t err, const erpc::Md5Hash functionID)
-=======
 void ClientManager::callErrorHandler(erpc_status_t err, const Hash functionID)
->>>>>>> origin/crc24_instead_of_md5
 {
     if (m_errorHandler != NULL)
     {
