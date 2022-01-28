@@ -84,7 +84,7 @@ protected:
      * @returns #kErpcStatus_Success or based on service handleInvocation.
      */
     erpc_status_t runInternalBegin(Codec **codec, MessageBuffer &buff, message_type_t &msgType, uint32_t &serviceId,
-                                   Md5Hash methodId, uint32_t &sequence);
+                                   Hash& methodId, uint32_t &sequence);
 
     /*!
      * @brief This function process message and handle sending respond.
@@ -97,7 +97,7 @@ protected:
      *
      * @returns #kErpcStatus_Success or based on service handleInvocation.
      */
-    erpc_status_t runInternalEnd(Codec *codec, message_type_t msgType, uint32_t serviceId, Md5Hash methodId,
+    erpc_status_t runInternalEnd(Codec *codec, message_type_t msgType, uint32_t serviceId, Hash methodId,
                                  uint32_t sequence);
 
 #if ERPC_NESTED_CALLS

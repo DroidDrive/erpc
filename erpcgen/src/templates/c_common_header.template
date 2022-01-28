@@ -123,7 +123,7 @@ typedef struct {$fn.genericRetStruct}{
 /*! @brief {$iface.name} identifiers */
 constexpr uint8_t k{$iface.name}_service_id = {$iface.id};
 {%  for fn in iface.functions %}
-constexpr const char* k{$iface.name}_{$fn.name}_id = "{$fn.id}";
+constexpr Hash k{$iface.name}_{$fn.name}_id = "{$fn.id}";
 {%  endfor %}
 {% endfor %}
 
