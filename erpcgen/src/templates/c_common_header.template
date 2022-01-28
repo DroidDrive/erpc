@@ -4,6 +4,7 @@
 {% endif %}
 {$commonHeader()}
 
+#include <array>
 #include "erpc_client_setup.h"
 
 using namespace erpc;
@@ -121,11 +122,29 @@ typedef struct {$fn.genericRetStruct}{
 {% if not genCommonTypesFile %}
 {% for iface in group.interfaces %}
 /*! @brief {$iface.name} identifiers */
-constexpr uint8_t k{$iface.name}_service_id = {$iface.id};
+static constexpr uint8_t k{$iface.name}_service_id = {$iface.id};
 {%  for fn in iface.functions %}
-constexpr Hash k{$iface.name}_{$fn.name}_id = "{$fn.id}";
+static constexpr Hash k{$iface.name}_{$fn.name}_id = {$fn.id};
 {%  endfor %}
 {% endfor %}
+
+
+/// kikass:
+/// add compile time tuple of header ids here, so that we can use this service class as 
+/// a template and register the ids somewhere if ERPC_NESTED_CALLS_DETECTION
+{% for iface in group.interfaces %}
+class {$iface.serviceClassName2}
+{
+public:
+//static constexpr std::array IDs {
+//    {%  for fn in iface.functions %} k{$iface.name}_{$fn.name}_id {% if not loop.last %},{% endif %} {% endfor -- fn %}
+//    };
+static constexpr auto IDs = std::make_tuple(
+    {%  for fn in iface.functions %} k{$iface.name}_{$fn.name}_id {% if not loop.last %},{% endif %} {% endfor -- fn %}
+  );
+};
+{% endfor -- iface %}
+
 
 #if defined(__cplusplus)
 //extern "C" {

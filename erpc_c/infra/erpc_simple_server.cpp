@@ -8,6 +8,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "erpc_common.h"
 #include "erpc_simple_server.h"
 
 using namespace erpc;
@@ -28,7 +29,7 @@ void SimpleServer::disposeBufferAndCodec(Codec *codec)
     }
 }
 
-erpc_status_t SimpleServer::runInternal(void)
+erpc_status_t SimpleServer::runInternal(erpc::Hash& channel)
 {
     MessageBuffer buff;
     Codec *codec = NULL;
@@ -36,14 +37,14 @@ erpc_status_t SimpleServer::runInternal(void)
     // Handle the request.
     message_type_t msgType;
     uint32_t serviceId;
-    Hash methodId{};
+    // Hash methodId{channel};
     uint32_t sequence;
 
-    erpc_status_t err = runInternalBegin(&codec, buff, msgType, serviceId, methodId, sequence);
+    erpc_status_t err = runInternalBegin(&codec, buff, msgType, serviceId, channel, sequence);
 
     if (err == kErpcStatus_Success)
     {
-        err = runInternalEnd(codec, msgType, serviceId, methodId, sequence);
+        err = runInternalEnd(codec, msgType, serviceId, channel, sequence);
     }
 
     return err;
@@ -66,7 +67,7 @@ erpc_status_t SimpleServer::runInternalBegin(Codec **codec, MessageBuffer &buff,
     // Receive the next invocation request.
     if (err == kErpcStatus_Success)
     {
-        err = m_transport->receive(&buff);
+        err = m_transport->receive(methodId, &buff);
     }
 
 #if ERPC_PRE_POST_ACTION
@@ -131,7 +132,7 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
             if (err == kErpcStatus_Success)
             {
 #endif
-                err = m_transport->send(codec->getBuffer());
+                err = m_transport->send(methodId, codec->getBuffer());
 #if ERPC_MESSAGE_LOGGING
             }
 #endif
@@ -155,9 +156,10 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
 erpc_status_t SimpleServer::run(void)
 {
     erpc_status_t err = kErpcStatus_Success;
+    erpc::Hash channel{};
     while (!err && m_isServerOn)
     {
-        err = runInternal();
+        err = runInternal(channel);
     }
     return err;
 }
@@ -219,9 +221,10 @@ erpc_status_t SimpleServer::poll(void)
 
     if (m_isServerOn)
     {
-        if (m_transport->hasMessage() == true)
+        erpc::Hash channel = m_transport->hasMessage();
+        if (channel != 0)
         {
-            err = runInternal();
+            err = runInternal(channel);
         }
         else
         {

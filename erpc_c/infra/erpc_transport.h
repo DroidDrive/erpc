@@ -55,7 +55,7 @@ public:
      *
      * @return based on receive implementation.
      */
-    virtual erpc_status_t receive(MessageBuffer *message) = 0;
+    virtual erpc_status_t receive(const erpc::Hash& channel, MessageBuffer *message) = 0;
 
     /*!
      * @brief Prototype for send message.
@@ -66,7 +66,7 @@ public:
      *
      * @return based on send implementation.
      */
-    virtual erpc_status_t send(MessageBuffer *message) = 0;
+    virtual erpc_status_t send(const erpc::Hash& channel, MessageBuffer *message) = 0;
 
     /*!
      * @brief Poll for an incoming message.
@@ -77,7 +77,7 @@ public:
      *
      * @retval True when a message is available to process, else false.
      */
-    virtual bool hasMessage(void) { return true; }
+    virtual erpc::Hash hasMessage(void) { return 0; }
 
     /*!
      * @brief This functions sets the CRC-16 implementation.

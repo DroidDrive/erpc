@@ -115,7 +115,7 @@ protected:
      * This function call functions for receiving data, process this data and
      * if reply exist, send it back.
      */
-    erpc_status_t runInternal(void);
+    erpc_status_t runInternal(erpc::Hash& channel);
 
     /*!
      * @brief Disposing message buffers and codecs.

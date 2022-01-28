@@ -43,7 +43,7 @@ static Header h;
 static bool headerReceived = false;
 static bool dataReceived = false;
 
-erpc_status_t FramedTransport::receive(MessageBuffer *message)
+erpc_status_t FramedTransport::receive(const Hash& channel, MessageBuffer *message)
 {
     assert(m_crcImpl && "Uninitialized Crc16 object.");
 
@@ -54,7 +54,7 @@ erpc_status_t FramedTransport::receive(MessageBuffer *message)
         erpc_status_t ret = kErpcStatus_Fail;
         if(!headerReceived){
             // Receive header first.
-            ret = underlyingReceive((uint8_t *)&h, sizeof(h));
+            ret = underlyingReceive(channel, (uint8_t *)&h, sizeof(h));
 
             if (ret != kErpcStatus_Success)
             {
@@ -81,7 +81,7 @@ erpc_status_t FramedTransport::receive(MessageBuffer *message)
         if (!dataReceived)
         {
              // Receive rest of the message now we know its size.
-            ret = underlyingReceive(message->get(), h.m_messageSize);
+            ret = underlyingReceive(channel, message->get(), h.m_messageSize);
 
             if (ret != kErpcStatus_Success)
             {
@@ -106,7 +106,7 @@ erpc_status_t FramedTransport::receive(MessageBuffer *message)
     return kErpcStatus_Success;
 }
 
-erpc_status_t FramedTransport::send(MessageBuffer *message)
+erpc_status_t FramedTransport::send(const Hash& channel, MessageBuffer *message)
 {
     assert(m_crcImpl && "Uninitialized Crc16 object.");
 #if !ERPC_THREADS_IS(NONE)
@@ -119,12 +119,12 @@ erpc_status_t FramedTransport::send(MessageBuffer *message)
     Header h;
     h.m_messageSize = messageLength;
     h.m_crc = m_crcImpl->computeCRC16(message->get(), messageLength);
-    erpc_status_t ret = underlyingSend((uint8_t *)&h, sizeof(h));
+    erpc_status_t ret = underlyingSend(channel, (uint8_t *)&h, sizeof(h));
     if (ret != kErpcStatus_Success)
     {
         return ret;
     }
 
     // Send the rest of the message.
-    return underlyingSend(message->get(), messageLength);
+    return underlyingSend(channel, message->get(), messageLength);
 }

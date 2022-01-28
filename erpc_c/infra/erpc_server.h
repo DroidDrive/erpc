@@ -13,6 +13,7 @@
 
 #include "erpc_client_server_common.h"
 #include "erpc_codec.h"
+#include "erpc_transport.h"
 #include "erpc_config_internal.h"
 #if ERPC_NESTED_CALLS
 #include "erpc_client_manager.h"
@@ -143,7 +144,7 @@ public:
      *
      * @param[in] transport Transport layer to use.
      */
-    void setTransport(Transport *transport);
+    void setTransport(erpc::Transport *transport);
 
     /*!
      * @brief Add service.
@@ -172,7 +173,7 @@ public:
 protected:
     MessageBufferFactory *m_messageFactory; /*!< Contains MessageBufferFactory to use. */
     CodecFactory *m_codecFactory;           /*!< Contains CodecFactory to use. */
-    Transport *m_transport;                 /*!< Transport layer used to send and receive data. */
+    erpc::Transport *m_transport;                 /*!< Transport layer used to send and receive data. */
     Service *m_firstService;                /*!< Contains pointer to first service. */
 
     /*!

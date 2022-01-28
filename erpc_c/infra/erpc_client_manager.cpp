@@ -31,12 +31,12 @@ void ClientManager::setTransport(Transport *transport)
     m_transport = transport;
 }
 
-RequestContext ClientManager::createRequest(bool isOneway)
+RequestContext ClientManager::createRequest(const erpc::Hash& channel, bool isOneway)
 {
     // Create codec to read and write the request.
     Codec *codec = createBufferAndCodec();
 
-    return RequestContext(++m_sequence, codec, isOneway);
+    return RequestContext(channel, ++m_sequence, codec, isOneway);
 }
 
 bool ClientManager::performRequest(RequestContext &request)
@@ -92,7 +92,7 @@ bool ClientManager::performClientRequest(RequestContext &request)
     if(request.getState() == RequestContextState::VALID)
     {
          // Send invocation request to server.
-        err = m_transport->send(request.getCodec()->getBuffer());
+        err = m_transport->send(request.getChannel(), request.getCodec()->getBuffer());
         if (err)
         {
             request.getCodec()->updateStatus(err);
@@ -107,7 +107,7 @@ bool ClientManager::performClientRequest(RequestContext &request)
         if(request.getState() == RequestContextState::SENT || request.getState() == RequestContextState::PENDING)
         {
             // Receive reply.
-            err = m_transport->receive(request.getCodec()->getBuffer());
+            err = m_transport->receive(request.getChannel(), request.getCodec()->getBuffer());
             if (err)
             {
                 request.getCodec()->updateStatus(err);
@@ -156,7 +156,7 @@ bool ClientManager::performNestedClientRequest(RequestContext &request)
     // Send invocation request to server.
     if (request.getCodec()->isStatusOk() == true)
     {
-        err = m_transport->send(request.getCodec()->getBuffer());
+        err = m_transport->send(request.getChannel(), equest.getCodec()->getBuffer());
         request.getCodec()->updateStatus(err);
     }
 
@@ -241,7 +241,7 @@ void ClientManager::releaseRequest(RequestContext &request)
     m_codecFactory->dispose(request.getCodec());
 }
 
-void ClientManager::callErrorHandler(erpc_status_t err, const Hash functionID)
+void ClientManager::callErrorHandler(erpc_status_t err, const erpc::Hash functionID)
 {
     if (m_errorHandler != NULL)
     {

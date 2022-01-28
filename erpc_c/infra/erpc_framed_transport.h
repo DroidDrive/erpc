@@ -92,7 +92,7 @@ public:
      * @retval kErpcStatus_CrcCheckFailed When receiving failed.
      * @retval other Subclass may return other errors from the underlyingReceive() method.
      */
-    virtual erpc_status_t receive(MessageBuffer *message) override;
+    virtual erpc_status_t receive(const Hash& channel, MessageBuffer *message) override;
 
     /*!
      * @brief Function to send prepared message.
@@ -102,7 +102,7 @@ public:
      * @retval kErpcStatus_Success When sending was successful.
      * @retval other Subclass may return other errors from the underlyingSend() method.
      */
-    virtual erpc_status_t send(MessageBuffer *message) override;
+    virtual erpc_status_t send(const Hash& channel, MessageBuffer *message) override;
 
     /*!
      * @brief This functions sets the CRC-16 implementation.
@@ -128,7 +128,7 @@ protected:
      * @retval kErpcStatus_Success When data was written successfully.
      * @retval kErpcStatus_Fail When writing data ends with error.
      */
-    virtual erpc_status_t underlyingSend(const uint8_t *data, uint32_t size) = 0;
+    virtual erpc_status_t underlyingSend(const erpc::Hash& channel, const uint8_t *data, uint32_t size) = 0;
 
     /*!
      * @brief Subclasses must implement this function to receive data.
@@ -139,7 +139,7 @@ protected:
      * @retval kErpcStatus_Success When data was read successfully.
      * @retval kErpcStatus_Fail When reading data ends with error.
      */
-    virtual erpc_status_t underlyingReceive(uint8_t *data, uint32_t size) = 0;
+    virtual erpc_status_t underlyingReceive(const erpc::Hash& channel, uint8_t *data, uint32_t size) = 0;
 };
 
 } // namespace erpc

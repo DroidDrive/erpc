@@ -22,8 +22,9 @@
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
 
-using Hash = uint32_t;
-
+namespace erpc{
+    using Hash = uint32_t;
+}
 
 /*! @brief eRPC status return codes. */
 enum _erpc_status
