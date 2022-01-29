@@ -56,6 +56,7 @@ extern "C" {
  */
 int erpc_client_init(erpc_transport_t transport, erpc_mbf_t message_buffer_factory);
 
+void erpc_client_reinit(size_t id, erpc_transport_t transport, erpc_mbf_t message_buffer_factory);
 /*!
  * @brief This function sets error handler function.
  *

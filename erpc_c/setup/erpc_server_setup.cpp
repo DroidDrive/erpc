@@ -86,6 +86,29 @@ int erpc_server_init(erpc_transport_t transport, erpc_mbf_t message_buffer_facto
     return serverCount < MAX_SERVER_COUNT ? serverCount++ : -1;
 }
 
+void erpc_server_reinit(size_t id, erpc_transport_t transport, erpc_mbf_t message_buffer_factory)
+{
+    assert(transport);
+
+    Transport *castedTransport;
+    
+    if ( id < serverCount) {
+        // Init factories.
+        s_codecFactorys[serverCount].construct();
+
+        // Init server with the provided transport.
+        s_servers[serverCount].construct();
+        s_servers[serverCount]->setId(serverCount);
+        castedTransport = reinterpret_cast<Transport *>(transport);
+        s_crc16s[serverCount].construct();
+        castedTransport->setCrc16(s_crc16s[serverCount].get());
+        s_servers[serverCount]->setTransport(castedTransport);
+        s_servers[serverCount]->setCodecFactory(s_codecFactorys[serverCount]);
+        s_servers[serverCount]->setMessageBufferFactory(reinterpret_cast<MessageBufferFactory *>(message_buffer_factory));
+        g_servers[serverCount] = s_servers[serverCount];
+    }
+}
+
 // void erpc_server_deinit(void)
 // {
 //     s_crc16.destroy();
