@@ -26,6 +26,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace erpc {
+
+    enum class State : uint8_t{
+        RECEIVE = 0x00,
+        RECEIVE_DONE = 0x01,
+        PROCESS = 0x02,
+        PROCESS_DONE = 0x03,
+        SEND = 0x04,
+        SEND_DONE = 0x05
+    };
 /*!
  * @brief Based server implementation.
  *
@@ -40,9 +49,15 @@ public:
      * This function initializes object attributes.
      */
     SimpleServer(void)
-    : m_isServerOn(true)
-    {
-    }
+    : m_isServerOn(true), 
+      m_state{ State::SEND_DONE }, 
+      m_last_channel {}, 
+      m_buff {}, 
+      m_codec {nullptr}, 
+      m_msgType {}, 
+      m_serviceId {}, 
+      m_sequence {} 
+      {}
 
     /*!
      * @brief Run server in infinite loop.
@@ -126,6 +141,16 @@ protected:
 
     bool m_isServerOn; /*!< Information if server is ON or OFF. */
     size_t m_id;
+    State m_state;
+    erpc::Hash m_last_channel;
+
+    /// handle request buffers
+    MessageBuffer m_buff;
+    Codec* m_codec;
+    message_type_t m_msgType;
+    uint32_t m_serviceId;
+    uint32_t m_sequence;
+    
 };
 
 } // namespace erpc
