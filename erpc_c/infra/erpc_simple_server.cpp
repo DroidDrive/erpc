@@ -33,34 +33,42 @@ erpc_status_t SimpleServer::runInternal(erpc::Hash& channel)
 {
     erpc_status_t err = kErpcStatus_Success;
     if(m_state == State::SEND_DONE || m_state == State::RECEIVE){
+        /// beginning or already started receiving?
+        /// receive more input data (header + payload)
         err = runInternalBegin(&m_codec, m_buff, m_msgType, m_serviceId, channel, m_sequence);
         /// successful done receiving?
         if (err == kErpcStatus_Success)
         {
+            /// acknoledge, go forward
             m_state = State::RECEIVE_DONE;
         }
-        else if (err == kErpcStatus_Pending){}
+        else if (err == kErpcStatus_ReceiveFailed || err == kErpcStatus_Pending){
+            /// do nothing
+        }
         else{
             /// pretend that nothing happened, reset state machine to the beginning
             m_state = State::SEND_DONE;
         }
     }
     if(m_state == State::RECEIVE_DONE || m_state == State::PROCESS || m_state == State::PROCESS_DONE || m_state == State::SEND){
-        err = runInternalEnd(m_codec, m_msgType, m_serviceId, channel, m_sequence);
         /// successful done receiving?
+        /// start processing and response sending
+        err = runInternalEnd(m_codec, m_msgType, m_serviceId, channel, m_sequence);
         if (err == kErpcStatus_Success)
         {
+            /// acknowledge, were done, go to start
             m_state = State::SEND_DONE;
         }
-        else if (err == kErpcStatus_Pending){}
+        else if (err == kErpcStatus_ReceiveFailed || err == kErpcStatus_Pending){
+            /// do nothing
+        }
         else{
             /// pretend that nothing happened, reset state machine to the beginning
             m_state = State::SEND_DONE;
         }
     }
     
-
-
+    /// return whatever status we have
     return err;
 }
 
