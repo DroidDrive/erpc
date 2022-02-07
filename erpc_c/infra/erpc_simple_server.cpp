@@ -42,7 +42,7 @@ erpc_status_t SimpleServer::runInternal(erpc::Hash& channel)
             /// acknoledge, go forward
             m_state = State::RECEIVE_DONE;
         }
-        else if (err == kErpcStatus_Pending){
+        else if (err == kErpcStatus_ReceiveFailed || err == kErpcStatus_Pending){
             /// do nothing
         }
         else{
@@ -60,7 +60,7 @@ erpc_status_t SimpleServer::runInternal(erpc::Hash& channel)
             /// acknowledge, were done, go to start
             m_state = State::SEND_DONE;
         }
-        else if (err == kErpcStatus_Pending){
+        else if (err == kErpcStatus_ReceiveFailed || err == kErpcStatus_Pending){
             /// do nothing
         }
         else{
