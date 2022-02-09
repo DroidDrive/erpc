@@ -2159,7 +2159,7 @@ string CGenerator::getFunctionPrototypeWithClient(Group *group, FunctionBase *fn
     //     }
     // }
 
-    proto += "ClientManager* g_client";
+    proto += "ClientManager* g_client, bool restartRequest";
     if(params.size() > 0){
         proto += ", ";
     }
@@ -2318,7 +2318,7 @@ string CGenerator::getFunctionPrototypeCallWithClient(Group *group, FunctionBase
         }
     }
 
-    proto += "g_client";
+    proto += "g_client, restartRequest";
     if (params.size() > 0){
         proto += ", ";
     }
@@ -2479,7 +2479,7 @@ string CGenerator::getFunctionPrototypeWithGenericType(Group *group, FunctionBas
     // }
 
     if(addIdArg){
-        proto += "size_t id";
+        proto += "size_t id, bool restartRequest";
     }
     if (params.size() > 0){
         proto += ", ";
