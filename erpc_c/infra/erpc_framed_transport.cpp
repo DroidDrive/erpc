@@ -41,69 +41,67 @@ void FramedTransport::setCrc16(Crc16 *crcImpl)
 
 static Header h;
 static bool headerReceived = false;
-static bool dataReceived = false;
 
 erpc_status_t FramedTransport::receive(const Hash& channel, MessageBuffer *message)
 {
     assert(m_crcImpl && "Uninitialized Crc16 object.");
 
+    erpc_status_t ret = kErpcStatus_Fail;
+
+    if(!headerReceived)
     {
-#if !ERPC_THREADS_IS(NONE)
-        Mutex::Guard lock(m_receiveLock);
-#endif
-        erpc_status_t ret = kErpcStatus_Fail;
-        if(!headerReceived){
-            // Receive header first.
-            ret = underlyingReceive(channel, (uint8_t *)&h, sizeof(h));
+        // Receive header first.
+        ret = underlyingReceive(channel, (uint8_t *)&h, sizeof(h));
 
-            if (ret != kErpcStatus_Success)
-            {
-                return ret;
+        if (ret == kErpcStatus_Success)
+        {
+            // received size can't be zero.
+            if (h.m_messageSize == 0){
+                ret = kErpcStatus_ReceiveFailed;
             }
-            headerReceived = true;
-        }
-       
-
-
-        // received size can't be zero.
-        if (h.m_messageSize == 0)
-        {
-            return kErpcStatus_ReceiveFailed;
-        }
-
-        // received size can't be larger then buffer length.
-        if (h.m_messageSize > message->getLength())
-        {
-            return kErpcStatus_ReceiveFailed;
-        }
-
-
-        if (!dataReceived)
-        {
-             // Receive rest of the message now we know its size.
-            ret = underlyingReceive(channel, message->get(), h.m_messageSize);
-
-            if (ret != kErpcStatus_Success)
-            {
-                return ret;
-            }
-            dataReceived = true;
-        }
-       
-    }
-
-    headerReceived = false;
-    dataReceived = false;
+            // received size can't be larger then buffer length.
+            else if (h.m_messageSize > message->getLength()){
+                ret = kErpcStatus_ReceiveFailed;
+            } 
     
-    // Verify CRC.
-    uint16_t computedCrc = m_crcImpl->computeCRC16(message->get(), h.m_messageSize);
-    if (computedCrc != h.m_crc)
-    {
-        return kErpcStatus_CrcCheckFailed;
+            if (ret == kErpcStatus_Success){
+                headerReceived = true;
+            }
+        }
     }
 
-    message->setUsed(h.m_messageSize);
-    return kErpcStatus_Success;
+    if (headerReceived)
+    {
+        // Receive rest of the message now we know its size.
+        ret = underlyingReceive(channel, message->get(), h.m_messageSize);
+
+        if (ret == kErpcStatus_Success)
+        {
+            // Verify CRC.
+            uint16_t computedCrc = m_crcImpl->computeCRC16(message->get(), h.m_messageSize);
+            if (computedCrc != h.m_crc)
+            {
+                ret = kErpcStatus_CrcCheckFailed;
+            }
+            else{
+                /// and set message buffer length to used and continue with receive = succes
+                message->setUsed(h.m_messageSize);
+            }
+
+            /// crc ok or crc failed, reset receive flags
+            headerReceived = false;
+
+        }
+        else if (ret == kErpcStatus_Pending){
+            /// do nothing
+        }
+        else{
+            /// receive failed, reset receive flags
+            headerReceived = false;
+        }
+    }
+
+    return ret;
 }
 
 erpc_status_t FramedTransport::send(const Hash& channel, MessageBuffer *message)

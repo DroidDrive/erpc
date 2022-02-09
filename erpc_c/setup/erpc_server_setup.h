@@ -116,6 +116,8 @@ erpc_status_t erpc_server_run(size_t);
  */
 erpc_status_t erpc_server_poll(size_t);
 
+erpc_status_t erpc_server_flush(size_t id);
+
 /*!
  * @brief This functions should be used when client is calling quit server.
  *

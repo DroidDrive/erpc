@@ -170,6 +170,8 @@ public:
      */
     virtual void stop(void) = 0;
 
+    virtual void flush(void) = 0;
+
 protected:
     MessageBufferFactory *m_messageFactory; /*!< Contains MessageBufferFactory to use. */
     CodecFactory *m_codecFactory;           /*!< Contains CodecFactory to use. */
