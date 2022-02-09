@@ -205,10 +205,12 @@ void ClientManager::verifyReply(RequestContext &request)
     if (request.getCodec()->isStatusOk() == true)
     {
         // Verify that this is a reply to the request we just sent.
-        if ((msgType != kReplyMessage) || (sequence != request.getSequence()))
-        {
-            request.getCodec()->updateStatus(kErpcStatus_ExpectedReply);
-        }
+        /// kikass13: how about not doing this?
+        /// because we reset request periodically now, so there is no point in doing this
+        // if ((msgType != kReplyMessage) || (sequence != request.getSequence()))
+        // {
+        //     request.getCodec()->updateStatus(kErpcStatus_ExpectedReply);
+        // }
     }
 }
 
