@@ -14,6 +14,8 @@
 #include <cassert>
 #include <cstdio>
 
+#include <limits>
+
 using namespace erpc;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,58 +40,54 @@ void FramedTransport::setCrc16(Crc16 *crcImpl)
     m_crcImpl = crcImpl;
 }
 
-
-static Header h;
-static bool headerReceived = false;
-
 erpc_status_t FramedTransport::receive(const Hash& channel, MessageBuffer *message)
 {
     assert(m_crcImpl && "Uninitialized Crc16 object.");
 
     erpc_status_t ret = kErpcStatus_Fail;
 
-    if(!headerReceived)
+    if(!headerReceived_)
     {
         // Receive header first.
-        ret = underlyingReceive(channel, (uint8_t *)&h, sizeof(h));
+        ret = underlyingReceive(channel, (uint8_t *)&headerBuffer_, sizeof(headerBuffer_));
 
         if (ret == kErpcStatus_Success)
         {
             // received size can't be zero.
-            if (h.m_messageSize == 0){
+            if (headerBuffer_.m_messageSize == 0){
                 ret = kErpcStatus_ReceiveFailed;
             }
             // received size can't be larger then buffer length.
-            else if (h.m_messageSize > message->getLength()){
+            else if (headerBuffer_.m_messageSize > message->getLength()){
                 ret = kErpcStatus_ReceiveFailed;
             } 
     
             if (ret == kErpcStatus_Success){
-                headerReceived = true;
+                headerReceived_ = true;
             }
         }
     }
 
-    if (headerReceived)
+    if (headerReceived_)
     {
         // Receive rest of the message now we know its size.
-        ret = underlyingReceive(channel, message->get(), h.m_messageSize);
+        ret = underlyingReceive(channel, message->get(), headerBuffer_.m_messageSize);
 
         if (ret == kErpcStatus_Success)
         {
             // Verify CRC.
-            uint16_t computedCrc = m_crcImpl->computeCRC16(message->get(), h.m_messageSize);
-            if (computedCrc != h.m_crc)
+            uint16_t computedCrc = m_crcImpl->computeCRC16(message->get(), headerBuffer_.m_messageSize);
+            if (computedCrc != headerBuffer_.m_crc)
             {
                 ret = kErpcStatus_CrcCheckFailed;
             }
             else{
                 /// and set message buffer length to used and continue with receive = succes
-                message->setUsed(h.m_messageSize);
+                message->setUsed(headerBuffer_.m_messageSize);
             }
 
             /// crc ok or crc failed, reset receive flags
-            headerReceived = false;
+            headerReceived_ = false;
 
         }
         else if (ret == kErpcStatus_Pending){
@@ -97,7 +95,7 @@ erpc_status_t FramedTransport::receive(const Hash& channel, MessageBuffer *messa
         }
         else{
             /// receive failed, reset receive flags
-            headerReceived = false;
+            headerReceived_ = false;
         }
     }
 
@@ -111,18 +109,57 @@ erpc_status_t FramedTransport::send(const Hash& channel, MessageBuffer *message)
     Mutex::Guard lock(m_sendLock);
 #endif
 
+    erpc_status_t ret = kErpcStatus_Success;
     uint16_t messageLength = message->getUsed();
+    uint8_t* bytePtr = reinterpret_cast<uint8_t*>(message->get());
 
     // Send header first.
-    Header h;
-    h.m_messageSize = messageLength;
-    h.m_crc = m_crcImpl->computeCRC16(message->get(), messageLength);
-    erpc_status_t ret = underlyingSend(channel, (uint8_t *)&h, sizeof(h));
-    if (ret != kErpcStatus_Success)
+    if(!this->headerSend_)
     {
-        return ret;
-    }
+        Header h;
+        h.m_messageSize = messageLength;
+        h.m_crc = m_crcImpl->computeCRC16(message->get(), messageLength);
 
+        /// this should be done in one cycle, and can be repeated N times, 
+        /// because it's not fragmented into multiple header packets
+        uint32_t sendBytes = underlyingSend(channel, (uint8_t *)&h, sizeof(h));
+        if(sendBytes == sizeof(h)){
+            this->headerSend_ = true;
+        }
+        else if (sendBytes == std::numeric_limits<uint32_t>::max()) {
+            ret = kErpcStatus_SendFailed;
+        }
+        else{
+            ret = kErpcStatus_Pending;
+        }
+    }
+    
     // Send the rest of the message.
-    return underlyingSend(channel, message->get(), messageLength);
+    if(this->headerSend_)
+    {
+        /// calculate new buffer sending address
+        bytePtr += this->sentBytesInBuffer_;
+        uint32_t missingMessageBytes = messageLength - this->sentBytesInBuffer_;
+
+        /// ...
+        uint32_t sendBytes = underlyingSend(channel, bytePtr, missingMessageBytes);
+        this->sentBytesInBuffer_ += sendBytes;
+
+        if(sendBytes == messageLength){
+            ret = kErpcStatus_Success;
+            this->headerSend_ = false;
+            this->sentBytesInBuffer_ = 0;
+        }
+        else if (sendBytes == std::numeric_limits<uint32_t>::max()) 
+        {
+            ret = kErpcStatus_SendFailed;
+            this->headerSend_ = false;
+            this->sentBytesInBuffer_ = 0;
+        }
+        else{
+            ret = kErpcStatus_Pending;
+        }
+    }
+  
+    return ret;
 }

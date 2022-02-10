@@ -182,7 +182,7 @@ void BasicCodec::writeCallback(funPtr callback1, funPtr callback2)
     }
 }
 
-void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Hash* request, uint32_t *sequence)
+void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Hash* request, uint32_t* /*sequence*/)
 {
     PayloadHeader header;
     readData(&header, sizeof(PayloadHeader));
