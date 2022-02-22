@@ -54,6 +54,12 @@ ERPC_MANUALLY_CONSTRUCTED_STATIC({$iface.serviceClassName}, s_{$iface.serviceCla
 {$> symbolFreeSpaceSource(group.symbolsMap.symbolsServerFree, "noSharedMem")}
 {% def serverShimCode(fn, serverIDName, functionIDName) ------------------------- serverShimCode(fn, serverIDName, functionIDName) %}
 {% set serverIndent = "" >%}
+
+{% if !fn.isReturnValue %}
+(void) messageFactory;
+(void) sequence;
+{% endif -- !isReturnValue %}
+
 {% if (fn.isReturnValue || fn.isSendValue) && generateErrorChecks %}
     erpc_status_t err = kErpcStatus_Success;
 
