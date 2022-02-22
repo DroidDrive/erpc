@@ -72,8 +72,14 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
     {% endif -- isNullReturnType %}
 {% endif -- isNotVoid %}
 
+    // do we want to restart the request?
+    if(restartRequest){
+        // Dispose of the request.
+        g_client->releaseRequest(pendingRequest_);
+    }
+
     // Get a new request.
-    if(pendingRequest_.getState() == RequestContextState::INVALID){
+    if(restartRequest || pendingRequest_.getState() == RequestContextState::INVALID){
 {% if !fn.isReturnValue %}
         pendingRequest_ = g_client->createRequest(channel, true);
 {% else %}

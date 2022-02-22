@@ -42,12 +42,13 @@ erpc_status_t SimpleServer::runInternal(erpc::Hash& channel)
             /// acknoledge, go forward
             m_state = State::RECEIVE_DONE;
         }
-        else if (err == kErpcStatus_ReceiveFailed || err == kErpcStatus_Pending){
+        else if (err == kErpcStatus_Pending){
             /// do nothing
         }
         else{
             /// pretend that nothing happened, reset state machine to the beginning
             m_state = State::SEND_DONE;
+            return err;
         }
     }
     if(m_state == State::RECEIVE_DONE || m_state == State::PROCESS || m_state == State::PROCESS_DONE || m_state == State::SEND){
@@ -59,12 +60,13 @@ erpc_status_t SimpleServer::runInternal(erpc::Hash& channel)
             /// acknowledge, were done, go to start
             m_state = State::SEND_DONE;
         }
-        else if (err == kErpcStatus_ReceiveFailed || err == kErpcStatus_Pending){
+        else if (err == kErpcStatus_Pending){
             /// do nothing
         }
         else{
             /// pretend that nothing happened, reset state machine to the beginning
             m_state = State::SEND_DONE;
+            return err;
         }
     }
     
@@ -87,6 +89,10 @@ erpc_status_t SimpleServer::runInternalBegin(Codec **codec, MessageBuffer &buff,
                 err = kErpcStatus_MemoryError;
             }
         }
+        else{
+            err = kErpcStatus_MemoryError;
+        }
+
         // Receive the next invocation request.
         if (err == kErpcStatus_Success)
         {
@@ -291,4 +297,10 @@ erpc_status_t SimpleServer::poll(void)
 void SimpleServer::stop(void)
 {
     m_isServerOn = false;
+}
+
+
+void SimpleServer::flush(void)
+{
+    m_transport->flush();
 }

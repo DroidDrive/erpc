@@ -177,6 +177,23 @@ erpc_status_t erpc_server_poll(size_t id)
     return status;
 }
 
+erpc_status_t erpc_server_flush(size_t id){
+    erpc_status_t status;
+
+    if (g_servers[id] == NULL)
+    {
+        status = kErpcStatus_Fail;
+    }
+    else
+    {
+        g_servers[id]->flush();
+        status = kErpcStatus_Success;
+    }
+
+    return status;
+}
+
+
 void erpc_server_stop(size_t id)
 {
     if (g_servers[id] != NULL)

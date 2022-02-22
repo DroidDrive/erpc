@@ -82,6 +82,8 @@ public:
      */
     virtual void stop(void) override;
 
+    virtual void flush(void) override;
+
     size_t getId(){ return m_id;}
     void setId(size_t id) {m_id = id;}
 
