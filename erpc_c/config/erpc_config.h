@@ -70,14 +70,26 @@
 //! by compiler. Uncomment comment bellow to use static allocation policy.
 //! In case of static implementation user need consider another values to set (ERPC_CODEC_COUNT,
 //! ERPC_MESSAGE_LOGGERS_COUNT, ERPC_CLIENTS_THREADS_AMOUNT).
-// #define ERPC_ALLOCATION_POLICY (ERPC_ALLOCATION_POLICY_STATIC)
+#define ERPC_ALLOCATION_POLICY (ERPC_ALLOCATION_POLICY_STATIC)
 
 //! @def ERPC_CODEC_COUNT
 //!
 //! @brief Set amount of codecs objects used simultaneously in case of ERPC_ALLOCATION_POLICY is set to
 //! ERPC_ALLOCATION_POLICY_STATIC. For example if client or server is used in one thread then 1. If both are used in one thread per
 //! each then 2, ... Default value 2.
-// #define ERPC_CODEC_COUNT (2U)
+#define ERPC_CODEC_COUNT (20U)
+
+//! @def ERPC_SERVER_COUNT
+//!
+//! @brief Set amount of server objects used simultaneously in case of ERPC_ALLOCATION_POLICY is set to
+//! ERPC_ALLOCATION_POLICY_STATIC. Default value 10.
+#define ERPC_SERVER_COUNT (20U)
+
+//! @def ERPC_CLIENT_COUNT
+//!
+//! @brief Set amount of server objects used simultaneously in case of ERPC_ALLOCATION_POLICY is set to
+//! ERPC_ALLOCATION_POLICY_STATIC. Default value 10.
+#define ERPC_CLIENT_COUNT (20U)
 
 //! @def ERPC_MESSAGE_LOGGERS_COUNT
 //!
@@ -86,13 +98,13 @@
 //! For example if client or server is used in one thread then 1. If both are used in one thread per each then 2, ...
 //! For arbitrated client 1 is enough.
 //! Default value 0 (May not be used).
-// #define ERPC_MESSAGE_LOGGERS_COUNT (0U)
+#define ERPC_MESSAGE_LOGGERS_COUNT (0U)
 
 //! @def ERPC_CLIENTS_THREADS_AMOUNT
 //!
 //! @brief Set amount of client threads objects used in case of ERPC_ALLOCATION_POLICY is set to ERPC_ALLOCATION_POLICY_STATIC.
 //! Default value 1 (Most of current cases).
-// #define ERPC_CLIENTS_THREADS_AMOUNT (1U)
+#define ERPC_CLIENTS_THREADS_AMOUNT (0U)
 
 //! @def ERPC_THREADS
 //!
@@ -116,7 +128,7 @@
 //!
 //! Uncomment to change the count of buffers allocated by one of statically allocated messages.
 //! Default value is set to 2.
-//#define ERPC_DEFAULT_BUFFERS_COUNT (2U)
+#define ERPC_DEFAULT_BUFFERS_COUNT (2U)
 
 //! @def ERPC_NOEXCEPT
 //!
