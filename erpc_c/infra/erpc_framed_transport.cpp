@@ -145,7 +145,7 @@ erpc_status_t FramedTransport::send(const Hash& channel, MessageBuffer *message)
         uint32_t sendBytes = underlyingSend(channel, bytePtr, missingMessageBytes);
         this->sentBytesInBuffer_ += sendBytes;
 
-        if(sendBytes == messageLength){
+        if(this->sentBytesInBuffer_ == messageLength){
             ret = kErpcStatus_Success;
             this->headerSend_ = false;
             this->sentBytesInBuffer_ = 0;
