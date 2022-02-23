@@ -34,11 +34,11 @@ using namespace erpc;
 // #pragma weak g_client
 // ERPC_MANUALLY_CONSTRUCTED(BasicCodecFactory, s_codecFactory);
 // ERPC_MANUALLY_CONSTRUCTED(Crc16, s_crc16);
-ERPC_MANUALLY_CONSTRUCTED_ARRAY(ClientManager, s_clients, 10);
-ClientManager* g_clients[10] = { nullptr };
+ERPC_MANUALLY_CONSTRUCTED_ARRAY(ClientManager, s_clients, ERPC_CLIENT_COUNT);
+ClientManager* g_clients[ERPC_CLIENT_COUNT] = { nullptr };
 // #pragma weak g_client0
-ERPC_MANUALLY_CONSTRUCTED_ARRAY(BasicCodecFactory, s_codecFactorys, 10);
-ERPC_MANUALLY_CONSTRUCTED_ARRAY(Crc16, s_crc16s, 10);
+ERPC_MANUALLY_CONSTRUCTED_ARRAY(BasicCodecFactory, s_codecFactorys, ERPC_CLIENT_COUNT);
+ERPC_MANUALLY_CONSTRUCTED_ARRAY(Crc16, s_crc16s, ERPC_CLIENT_COUNT);
 static size_t clientCounter = 0;
 ////////////////////////////////////////////////////////////////////////////////
 // Code
@@ -49,7 +49,7 @@ int erpc_client_init(erpc_transport_t transport, erpc_mbf_t message_buffer_facto
 
     Transport* castedTransport;
 
-    if (clientCounter < MAX_CLIENT_COUNT) {
+    if (clientCounter < ERPC_CLIENT_COUNT) {
         // Init factories.
         s_codecFactorys[clientCounter].construct();
 
@@ -64,7 +64,7 @@ int erpc_client_init(erpc_transport_t transport, erpc_mbf_t message_buffer_facto
             reinterpret_cast<MessageBufferFactory*>(message_buffer_factory));
         g_clients[clientCounter] = s_clients[clientCounter];
     }
-    return clientCounter < MAX_CLIENT_COUNT ? clientCounter++ : -1;
+    return clientCounter < ERPC_CLIENT_COUNT ? clientCounter++ : -1;
 }
 
 void erpc_client_reinit(size_t id, erpc_transport_t transport, erpc_mbf_t message_buffer_factory) {

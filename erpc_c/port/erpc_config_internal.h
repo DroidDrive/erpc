@@ -82,6 +82,17 @@
 #endif
 #endif
 
+#if !defined(ERPC_SERVER_COUNT)
+#define ERPC_SERVER_COUNT (10U)
+#warning "ERPC_SERVER_COUNT is not defined. Default is used."
+#endif
+
+#if !defined(ERPC_CLIENT_COUNT)
+#define ERPC_CLIENT_COUNT (10U)
+#warning "ERPC_CLIENT_COUNT is not defined. Default is used."
+#endif
+
+
 // Safely detect tx_api.h.
 #define ERPC_HAS_THREADX_API_H (0)
 #if defined(__has_include)

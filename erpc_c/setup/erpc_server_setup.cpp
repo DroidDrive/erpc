@@ -30,12 +30,11 @@ using namespace erpc;
 // ERPC_MANUALLY_CONSTRUCTED(SimpleServer, s_server);
 // extern SimpleServer *g_server;
 // SimpleServer *g_server = NULL;
-ERPC_MANUALLY_CONSTRUCTED_ARRAY(SimpleServer, s_servers, 10);
-SimpleServer* g_servers[MAX_SERVER_COUNT] = {nullptr};
-ERPC_MANUALLY_CONSTRUCTED_ARRAY(BasicCodecFactory, s_codecFactorys, 10);
-ERPC_MANUALLY_CONSTRUCTED_ARRAY(Crc16, s_crc16s, 10);
+ERPC_MANUALLY_CONSTRUCTED_ARRAY(SimpleServer, s_servers, ERPC_SERVER_COUNT);
+SimpleServer* g_servers[ERPC_SERVER_COUNT] = {nullptr};
+ERPC_MANUALLY_CONSTRUCTED_ARRAY(BasicCodecFactory, s_codecFactorys, ERPC_SERVER_COUNT);
+ERPC_MANUALLY_CONSTRUCTED_ARRAY(Crc16, s_crc16s, ERPC_SERVER_COUNT);
 static size_t serverCount = 0;
-// std::array<SimpleServer, MAX_SERVER_SIZE> servers[] = {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Code
@@ -67,7 +66,7 @@ int erpc_server_init(erpc_transport_t transport, erpc_mbf_t message_buffer_facto
 
     Transport *castedTransport;
     
-    if(serverCount < MAX_SERVER_COUNT)
+    if(serverCount < ERPC_CLIENT_COUNT)
     {
         // Init factories.
         s_codecFactorys[serverCount].construct();
@@ -83,7 +82,7 @@ int erpc_server_init(erpc_transport_t transport, erpc_mbf_t message_buffer_facto
         s_servers[serverCount]->setMessageBufferFactory(reinterpret_cast<MessageBufferFactory *>(message_buffer_factory));
         g_servers[serverCount] = s_servers[serverCount];
     }
-    return serverCount < MAX_SERVER_COUNT ? serverCount++ : -1;
+    return serverCount < ERPC_CLIENT_COUNT ? serverCount++ : -1;
 }
 
 void erpc_server_reinit(size_t id, erpc_transport_t transport, erpc_mbf_t message_buffer_factory)
