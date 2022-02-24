@@ -126,7 +126,7 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
 {%  set clientIndent = "    " >%}
 {$clientIndent}    }
 
-    {$clientIndent}if(pendingRequest_.getState() == RequestContextState::SENDING)
+    {$clientIndent}if(pendingRequest_.getState() > RequestContextState::VALID)
     {$clientIndent}{
     {$clientIndent}    // Send message to server
     {$clientIndent}    // Codec status is checked inside this function.

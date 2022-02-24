@@ -80,21 +80,13 @@ bool ClientManager::performClientRequest(RequestContext &request)
     }
 #endif
 
-#if ERPC_MESSAGE_LOGGING
-    if (request.getCodec()->isStatusOk() == true)
-    {
-        err = logMessage(request.getCodec()->getBuffer());
-        request.getCodec()->updateStatus(err);
-        return false;
-    }
-#endif
-
     if(request.getState() == RequestContextState::SENDING)
     {
          // Send invocation request to server.
         err = m_transport->send(request.getChannel(), request.getCodec()->getBuffer());
         if( err == kErpcStatus_Success){
             request.setState(RequestContextState::SENT);
+            return false;
         }
         else if (err == kErpcStatus_Pending){
             return false;
@@ -105,41 +97,41 @@ bool ClientManager::performClientRequest(RequestContext &request)
         }
     }
 
-
-    // If the request is oneway, then there is nothing more to do.
-    if (!request.isOneway())
+    if(request.getState() == RequestContextState::SENT)
     {
-        if(request.getState() == RequestContextState::SENT || request.getState() == RequestContextState::PENDING)
-        {
-            // Receive reply.
-            err = m_transport->receive(request.getChannel(), request.getCodec()->getBuffer());
-            if (err)
-            {
-                request.getCodec()->updateStatus(err);
-                if(err == kErpcStatus_Pending)
-                    request.setState(RequestContextState::PENDING);
-                return false;
-            }
-
-#if ERPC_MESSAGE_LOGGING
-            err = logMessage(request.getCodec()->getBuffer());
-            if (err)
-            {
-                request.getCodec()->updateStatus(err);
-                return false;
-            }
-#endif
-
-            // Check the reply.
-            verifyReply(request);
-            if (err)
-            {
-                request.getCodec()->updateStatus(err);
-                return false;
-            }
+        if (request.isOneway()){
+            request.setState(RequestContextState::DONE);
+        }
+        else{
+            request.setState(RequestContextState::PENDING);
+            return false;
         }
     }
-    request.setState(RequestContextState::DONE);
+
+    if(request.getState() == RequestContextState::PENDING){
+        // Receive reply.
+        err = m_transport->receive(request.getChannel(), request.getCodec()->getBuffer());
+        if (err)
+        {
+            request.getCodec()->updateStatus(err);
+            if(err == kErpcStatus_Pending){
+                request.setState(RequestContextState::PENDING);
+            }
+            else{
+            }
+            return false;
+        }
+        request.setState(RequestContextState::DONE);
+
+        // Check the reply.
+        verifyReply(request);
+        if (err)
+        {
+            request.getCodec()->updateStatus(err);
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -161,7 +153,7 @@ bool ClientManager::performNestedClientRequest(RequestContext &request)
     // Send invocation request to server.
     if (request.getCodec()->isStatusOk() == true)
     {
-        err = m_transport->send(request.getChannel(), equest.getCodec()->getBuffer());
+        err = m_transport->send(request.getChannel(), request.getCodec()->getBuffer());
         request.getCodec()->updateStatus(err);
     }
 
