@@ -217,9 +217,10 @@ enum RequestContextState
 {
     INVALID = 0,
     VALID = 1,
-    SENT = 2,
-    PENDING = 3,
-    DONE = 4,
+    SENDING = 2,
+    SENT = 3,
+    PENDING = 4,
+    DONE = 5,
 };
  
 
