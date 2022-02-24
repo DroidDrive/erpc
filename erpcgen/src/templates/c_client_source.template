@@ -104,6 +104,7 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
     {
         if(pendingRequest_.getState() == RequestContextState::VALID){
 {% endif -- generateErrorChecks %}
+{$clientIndent}    /// put stuff into sending buffers
 {$clientIndent}    codec->startWriteMessage({% if not fn.isReturnValue %}kOnewayMessage{% else %}kInvocationMessage{% endif %}, {$serverIDName}, {$functionIDName}, pendingRequest_.getSequence());
 
 {% if fn.isSendValue %}
@@ -118,52 +119,58 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
 {%   endif -- isNullable %}
 {%  endfor -- fn parameters %}
 {% endif -- isSendValue %}
+
+{$clientIndent}    ///go into sending state
+{$clientIndent}    pendingRequest_.setState(RequestContextState::SENDING);
+
 {%  set clientIndent = "    " >%}
 {$clientIndent}    }
 
-{$clientIndent}    // Send message to server
-{$clientIndent}    // Codec status is checked inside this function.
-{$clientIndent}    bool success = g_client->performRequest(pendingRequest_);
-{$clientIndent}    err = codec->getStatus();
-{$clientIndent}    if(success && pendingRequest_.getState() == RequestContextState::DONE)
-{%  set clientIndent = "        " >%}
-{$clientIndent}{
+    {$clientIndent}if(pendingRequest_.getState() == RequestContextState::SENDING)
+    {$clientIndent}{
+    {$clientIndent}    // Send message to server
+    {$clientIndent}    // Codec status is checked inside this function.
+    {$clientIndent}    bool success = g_client->performRequest(pendingRequest_);
+    {$clientIndent}    err = codec->getStatus();
+    {$clientIndent}    if(success && pendingRequest_.getState() == RequestContextState::DONE)
+    {$clientIndent}    {
+    {%  set clientIndent = "        " >%}
+    {% if fn.isReturnValue %}
+    {%  if fn.needTempVariableClient %}
+    {$clientIndent}    int32_t _tmp_local;
+    {%  endif %}
+    {%  for param in fn.parametersToClient if (param.serializedDirection == "" || param.serializedDirection == InDirection || param.referencedName != "") %}
 
-{% if fn.isReturnValue %}
-{%  if fn.needTempVariableClient %}
+    {%   if param.isNullable %}
+    {$clientIndent}    if ({$param.nullableName} != NULL{% if ((source == "client") && (param.direction != ReturnDirection) && (empty(param.lengthName) == false)) %} && {$param.lengthName} != NULL{% endif %})
+    {$clientIndent}    {
+    {$addIndent(clientIndent & "        ", param.coderCall.decode(param.coderCall))}
+            }
+    {%   else -- notNullable %}
+    {$addIndent(clientIndent & "    ", param.coderCall.decode(param.coderCall))}
+    {%   endif -- isNullable %}
+    {%  endfor -- fn parametersToClient %}
+    {%  if fn.returnValue.type.isNotVoid %}
+    {%   if fn.returnValue.isNullable %}
+    {$clientIndent}    bool isNull;
+    {$addIndent(clientIndent & "    ", f_paramIsNullableDecode(fn.returnValue))}
+    {%   else -- isNullable %}
+    /*
+    {$> addIndent(clientIndent & "    ", allocMem(fn.returnValue.firstAlloc))}
+    */
+    {$addIndent(clientIndent & "    ", fn.returnValue.coderCall.decode(fn.returnValue.coderCall))}
+    {%   endif -- isNullable %}
+    {%  endif -- isNotVoid %}
+    {% endif -- isReturnValue %}
+    {% if generateErrorChecks %}
+    {$clientIndent}    err = codec->getStatus();
+    {% endif -- generateErrorChecks %}
+    {%    if generateAllocErrorChecks %}
+            }
+    {% endif -- generateAllocErrorChecks %}
+{$clientIndent} } // END state == SENDING
+    } // END else
 
-{$clientIndent}    int32_t _tmp_local;
-{%  endif %}
-{%  for param in fn.parametersToClient if (param.serializedDirection == "" || param.serializedDirection == InDirection || param.referencedName != "") %}
-
-{%   if param.isNullable %}
-{$clientIndent}    if ({$param.nullableName} != NULL{% if ((source == "client") && (param.direction != ReturnDirection) && (empty(param.lengthName) == false)) %} && {$param.lengthName} != NULL{% endif %})
-{$clientIndent}    {
-{$addIndent(clientIndent & "        ", param.coderCall.decode(param.coderCall))}
-        }
-{%   else -- notNullable %}
-{$addIndent(clientIndent & "    ", param.coderCall.decode(param.coderCall))}
-{%   endif -- isNullable %}
-{%  endfor -- fn parametersToClient %}
-{%  if fn.returnValue.type.isNotVoid %}
-{%   if fn.returnValue.isNullable %}
-{$clientIndent}    bool isNull;
-{$addIndent(clientIndent & "    ", f_paramIsNullableDecode(fn.returnValue))}
-{%   else -- isNullable %}
-/*
-{$> addIndent(clientIndent & "    ", allocMem(fn.returnValue.firstAlloc))}
-*/
-{$addIndent(clientIndent & "    ", fn.returnValue.coderCall.decode(fn.returnValue.coderCall))}
-{%   endif -- isNullable %}
-{%  endif -- isNotVoid %}
-{% endif -- isReturnValue %}
-{% if generateErrorChecks %}
-{$clientIndent}    err = codec->getStatus();
-{% endif -- generateErrorChecks %}
-{%    if generateAllocErrorChecks %}
-        }
-{% endif -- generateAllocErrorChecks %}
-    }
 
     // cleanup if request is valid, not pending (either because of error or success)
     if(pendingRequest_.getState() == RequestContextState::DONE)

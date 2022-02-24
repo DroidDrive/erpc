@@ -89,17 +89,22 @@ bool ClientManager::performClientRequest(RequestContext &request)
     }
 #endif
 
-    if(request.getState() == RequestContextState::VALID)
+    if(request.getState() == RequestContextState::SENDING)
     {
          // Send invocation request to server.
         err = m_transport->send(request.getChannel(), request.getCodec()->getBuffer());
-        if (err)
-        {
+        if( err == kErpcStatus_Success){
+            request.setState(RequestContextState::SENT);
+        }
+        else if (err == kErpcStatus_Pending){
+            return false;
+        }
+        else{
             request.getCodec()->updateStatus(err);
             return false;
         }
-        request.setState(RequestContextState::SENT);
     }
+
 
     // If the request is oneway, then there is nothing more to do.
     if (!request.isOneway())
