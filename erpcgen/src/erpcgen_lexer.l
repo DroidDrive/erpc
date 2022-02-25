@@ -83,6 +83,7 @@ out             { return TOK_OUT; }
 inout           { return TOK_INOUT; }
 async           { return TOK_ASYNC; }
 oneway          { return TOK_ONEWAY; }
+skipCrc         { return TOK_SKIP_CRC_ANNOTATION; }
 list            { return TOK_LIST; }
 ref             { return TOK_REF; }
 true            { return TOK_TRUE; }

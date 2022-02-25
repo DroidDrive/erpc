@@ -1048,28 +1048,41 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
     if (returnNode) /* Function type/definition */
     {
         Token &returnTokenType = returnNode->getToken();
-        if (returnTokenType.getToken() == TOK_RETURN)
+        if(returnTokenType.getToken() == TOK_SKIP_CRC_ANNOTATION){
+            std::cout << "##############################################" << std::endl;
+            func->setSkipCrcCheck(true);
+        }
+        else if (returnTokenType.getToken() == TOK_RETURN)
         {
             AstNode *returnTypeNode = returnNode->getChild(0);
             Token &returnTypeToken = returnTypeNode->getToken();
             switch (returnTypeToken.getToken())
             {
                 case TOK_ONEWAY:
+                {
+                    std::cout << "oneway__________ " << std::endl;
                     func->setIsOneway(true);
                     func->setReturnStructMemberType(new StructMember("(return)", new VoidType));
                     break;
+                }
 
                 case TOK_VOID:
+                {
+                    std::cout << "void________ " << std::endl;
                     func->setReturnStructMemberType(new StructMember("(return)", new VoidType));
                     break;
-
+                }
                 default:
+                {
+                    std::cout << "default_________ " << std::endl;
                     DataType *dataType = lookupDataType(returnTypeNode);
                     func->setReturnStructMemberType(new StructMember("(return)", dataType));
                     break;
+                }
             }
             if (returnTypeToken.getToken() != TOK_ONEWAY)
             {
+                std::cout << "NOTOKEN... " <<std::endl;
                 addAnnotations(returnNode->getChild(1), func->getReturnStructMemberType());
             }
         }
@@ -1081,6 +1094,7 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
     }
     else
     {
+        std::cout << "ELSE" << std::endl;
         /* Function is callback */
         AstNode *callbackTypeNode = (*node)[2];
         assert(callbackTypeNode);
@@ -1104,6 +1118,8 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
 
         /* Add function oneway information. */
         funcDef->setIsOneway(callbackFunctionType->isOneway());
+
+        funcDef->setSkipCrcCheck(callbackFunctionType->getSkipCrcCheck());
 
         /* Add function return type*/
         funcDef->setReturnStructMemberType(callbackFunctionType->getReturnStructMemberType());

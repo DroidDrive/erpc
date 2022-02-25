@@ -55,6 +55,8 @@
 //! Allows a parameter or field to be null.
 #define NULLABLE_ANNOTATION "nullable"
 
+#define SKIP_CRC_ANNOTATION "skipCrc"
+
 //! Sets the path to write output files into.
 #define OUTPUT_DIR_ANNOTATION "output_dir"
 

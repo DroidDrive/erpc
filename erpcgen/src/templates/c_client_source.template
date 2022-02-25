@@ -102,6 +102,11 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
     }
     else
     {
+        {% if fn.skipCrcCheck %}
+        /// skip crc check, because the message is not really important and can fail
+        codec->setSkipCrc(true);
+        {% endif %}
+  
         if(pendingRequest_.getState() == RequestContextState::VALID){
 {% endif -- generateErrorChecks %}
 {$clientIndent}    /// put stuff into sending buffers
