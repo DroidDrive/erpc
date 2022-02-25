@@ -1055,18 +1055,23 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
             switch (returnTypeToken.getToken())
             {
                 case TOK_ONEWAY:
+                {
                     func->setIsOneway(true);
                     func->setReturnStructMemberType(new StructMember("(return)", new VoidType));
                     break;
+                }
 
                 case TOK_VOID:
+                {
                     func->setReturnStructMemberType(new StructMember("(return)", new VoidType));
                     break;
-
+                }
                 default:
+                {
                     DataType *dataType = lookupDataType(returnTypeNode);
                     func->setReturnStructMemberType(new StructMember("(return)", dataType));
                     break;
+                }
             }
             if (returnTypeToken.getToken() != TOK_ONEWAY)
             {
@@ -1105,6 +1110,8 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
         /* Add function oneway information. */
         funcDef->setIsOneway(callbackFunctionType->isOneway());
 
+        funcDef->setSkipCrcCheck(callbackFunctionType->getSkipCrcCheck());
+
         /* Add function return type*/
         funcDef->setReturnStructMemberType(callbackFunctionType->getReturnStructMemberType());
 
@@ -1117,6 +1124,13 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
 
     /* Get comment if exist. */
     addDoxygenComments(dynamic_cast<Symbol *>(func), node->getChild(5), node->getChild(6));
+
+
+    // Get special tokens at the end.
+    const std::string specialAnnotationsKey("skipCrcCheck");
+    if((*node).hasAttribute(specialAnnotationsKey)){
+        func->setSkipCrcCheck(true);
+    }
 
     return nullptr;
 }

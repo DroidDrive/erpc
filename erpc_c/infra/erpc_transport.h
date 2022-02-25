@@ -55,7 +55,7 @@ public:
      *
      * @return based on receive implementation.
      */
-    virtual erpc_status_t receive(const erpc::Hash& channel, MessageBuffer *message) = 0;
+    virtual erpc_status_t receive(const erpc::Hash& channel, MessageBuffer *message, bool skipCrc = false) = 0;
 
     /*!
      * @brief Prototype for send message.

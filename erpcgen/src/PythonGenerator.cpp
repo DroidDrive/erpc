@@ -178,6 +178,7 @@ data_map PythonGenerator::getFunctionTemplateData(Group *group, Function *fn)
     info["prototype"] = proto;
     info["id"] = std::to_string(crc24_decode(proto));
     info["isOneway"] = fn->isOneway();
+    info["skipCrcCheck"] = fn->getSkipCrcCheck();
     info["isReturnValue"] = !fn->isOneway();
     setTemplateComments(fn, info);
 

@@ -147,6 +147,7 @@ token_loc_t mergeLocation(const token_loc_t & l1, const token_loc_t & l2);
 %token <m_token> TOK_INOUT        "inout"
 %token <m_token> TOK_ASYNC        "async"
 %token <m_token> TOK_ONEWAY       "oneway"
+%token <m_token> TOK_SKIP_CRC       "skipCrc"
 %token <m_token> TOK_LIST         "list"
 %token <m_token> TOK_REF          "ref"
 %token <m_token> TOK_TRUE         "true"
@@ -496,7 +497,7 @@ function_type_base_def
                         }
                 ;
 /*
- * TOK_FUNCTION -> ( ident ( simple_data_type | TOK_VOID | TOK_ONEWAY ) ( TOK_CHILDREN -> param_def* ) ( TOK_CHILDREN -> TOK_ANNOTATION* ) )
+ * TOK_FUNCTION -> ( ident ( simple_data_type | TOK_VOID | TOK_ONEWAY | TOK_SKIP_CRC) ( TOK_CHILDREN -> param_def* ) ( TOK_CHILDREN -> TOK_ANNOTATION* ) )
  */
 function_type_def
                 :   ident[name] '(' param_list_opt[params] ')' TOK_ARROW function_return_type[return_type]
@@ -507,6 +508,21 @@ function_type_def
                             $$->appendChild(NULL);  // function type null to recognize function and callback
                             $$->appendChild($params);
                         }
+
+                |    TOK_SKIP_CRC[skip] ident[name] '(' param_list_opt[params] ')' TOK_ARROW function_return_type[return_type]
+                        {
+                            $$ = new AstNode(Token(TOK_FUNCTION, NULL, @name));
+                            $$->appendChild($name);
+                            $$->appendChild($return_type);
+                            $$->appendChild(NULL);  // function type null to recognize function and callback
+                            $$->appendChild($params);
+
+                            /// append annotation to our function object
+                            const std::string skipCrcKey("skipCrcCheck");
+                            Value* val = new IntegerValue(1);
+                            $$->setAttribute(skipCrcKey, val);
+                        }
+
                 |    TOK_ONEWAY[oneway] ident[name] '(' param_list_opt_in[params] ')'
                         {
                             $$ = new AstNode(Token(TOK_FUNCTION, NULL, @name));
@@ -518,7 +534,6 @@ function_type_def
                             $$->appendChild(NULL);  // function type null to recognize function and callback
                             $$->appendChild($params);
                         }
-
                 ;
 
 /* TODO: Annotations should be defined after data type. */

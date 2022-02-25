@@ -102,7 +102,7 @@ erpc_status_t SimpleServer::runInternalBegin(Codec **codec, MessageBuffer &buff,
 
     if(m_state == State::RECEIVE)
     {
-        err = m_transport->receive(methodId, &buff);
+        err = m_transport->receive(methodId, &buff, (*codec)->getSkipCrc());
         // Receive the next invocation request.
         if (err == kErpcStatus_Success)
         {
