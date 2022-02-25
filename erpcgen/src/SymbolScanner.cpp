@@ -1048,11 +1048,7 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
     if (returnNode) /* Function type/definition */
     {
         Token &returnTokenType = returnNode->getToken();
-        if(returnTokenType.getToken() == TOK_SKIP_CRC_ANNOTATION){
-            std::cout << "##############################################" << std::endl;
-            func->setSkipCrcCheck(true);
-        }
-        else if (returnTokenType.getToken() == TOK_RETURN)
+        if (returnTokenType.getToken() == TOK_RETURN)
         {
             AstNode *returnTypeNode = returnNode->getChild(0);
             Token &returnTypeToken = returnTypeNode->getToken();
@@ -1060,7 +1056,6 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
             {
                 case TOK_ONEWAY:
                 {
-                    std::cout << "oneway__________ " << std::endl;
                     func->setIsOneway(true);
                     func->setReturnStructMemberType(new StructMember("(return)", new VoidType));
                     break;
@@ -1068,13 +1063,11 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
 
                 case TOK_VOID:
                 {
-                    std::cout << "void________ " << std::endl;
                     func->setReturnStructMemberType(new StructMember("(return)", new VoidType));
                     break;
                 }
                 default:
                 {
-                    std::cout << "default_________ " << std::endl;
                     DataType *dataType = lookupDataType(returnTypeNode);
                     func->setReturnStructMemberType(new StructMember("(return)", dataType));
                     break;
@@ -1082,7 +1075,6 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
             }
             if (returnTypeToken.getToken() != TOK_ONEWAY)
             {
-                std::cout << "NOTOKEN... " <<std::endl;
                 addAnnotations(returnNode->getChild(1), func->getReturnStructMemberType());
             }
         }
@@ -1094,7 +1086,6 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
     }
     else
     {
-        std::cout << "ELSE" << std::endl;
         /* Function is callback */
         AstNode *callbackTypeNode = (*node)[2];
         assert(callbackTypeNode);
@@ -1133,6 +1124,13 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
 
     /* Get comment if exist. */
     addDoxygenComments(dynamic_cast<Symbol *>(func), node->getChild(5), node->getChild(6));
+
+
+    // Get special tokens at the end.
+    const std::string specialAnnotationsKey("skipCrcCheck");
+    if((*node).hasAttribute(specialAnnotationsKey)){
+        func->setSkipCrcCheck(true);
+    }
 
     return nullptr;
 }

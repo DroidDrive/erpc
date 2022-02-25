@@ -63,12 +63,6 @@ ERPC_MANUALLY_CONSTRUCTED_STATIC({$iface.serviceClassName}, s_{$iface.serviceCla
 {% if (fn.isReturnValue || fn.isSendValue) && generateErrorChecks %}
     erpc_status_t err = kErpcStatus_Success;
 
-    {$fn.skipCrcCheck}
-    {% if fn.skipCrcCheck %}
-    /// skip crc check, because the message is not really important and can fail
-    codec->setSkipCrc(true);
-    {% endif %}
-
 {% endif -- isReturnValue || isSendValue %}
 {% for param in fn.parameters %}
     {$param.variable}{% if param.isNullParam %} = NULL{%endif%};
