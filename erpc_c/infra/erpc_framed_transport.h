@@ -39,6 +39,8 @@ namespace erpc {
 struct Header
 {
     uint16_t m_messageSize; //!< Size in bytes of the message, excluding the header.
+    uint16_t m_messageSize2; // redundant message size
+    uint16_t m_messageSize3; // redundant message size
     uint16_t m_crc;         //!< CRC-16 over the message data.
 };
 

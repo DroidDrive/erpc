@@ -111,13 +111,13 @@ bool ClientManager::performClientRequest(RequestContext &request)
     if(request.getState() == RequestContextState::PENDING){
         // Receive reply.
         err = m_transport->receive(request.getChannel(), request.getCodec()->getBuffer());
-        if (err)
+        if (err != kErpcStatus_Success)
         {
-            request.getCodec()->updateStatus(err);
             if(err == kErpcStatus_Pending){
                 request.setState(RequestContextState::PENDING);
             }
             else{
+                request.getCodec()->updateStatus(err);
             }
             return false;
         }

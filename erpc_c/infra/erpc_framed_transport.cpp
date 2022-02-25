@@ -53,6 +53,24 @@ erpc_status_t FramedTransport::receive(const Hash& channel, MessageBuffer *messa
 
         if (ret == kErpcStatus_Success)
         {
+            /// evaluate redundant message sizes
+            bool messageSizeOk = true;
+            uint16_t realMessageSize = 0;
+            if(headerBuffer_.m_messageSize == headerBuffer_.m_messageSize2){ // a == b
+                realMessageSize = headerBuffer_.m_messageSize;
+            }
+            else if(headerBuffer_.m_messageSize == headerBuffer_.m_messageSize3){ // a == c
+                realMessageSize = headerBuffer_.m_messageSize;
+            }
+            else if(headerBuffer_.m_messageSize2 == headerBuffer_.m_messageSize3){ // b == c
+                realMessageSize = headerBuffer_.m_messageSize2;
+            }
+            else{
+                messageSizeOk = false;
+            }
+            /// remember correct message size
+            headerBuffer_.m_messageSize = realMessageSize;
+
             // received size can't be zero.
             if (headerBuffer_.m_messageSize == 0){
                 ret = kErpcStatus_ReceiveFailed;
@@ -118,6 +136,8 @@ erpc_status_t FramedTransport::send(const Hash& channel, MessageBuffer *message)
     {
         Header h;
         h.m_messageSize = messageLength;
+        h.m_messageSize2 = messageLength;
+        h.m_messageSize3 = messageLength;
         h.m_crc = m_crcImpl->computeCRC16(message->get(), messageLength);
 
         /// this should be done in one cycle, and can be repeated N times, 
