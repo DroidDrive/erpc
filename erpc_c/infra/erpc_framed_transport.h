@@ -39,6 +39,8 @@ namespace erpc {
 struct Header
 {
     uint16_t m_messageSize; //!< Size in bytes of the message, excluding the header.
+    uint16_t m_messageSize2; // redundant message size
+    uint16_t m_messageSize3; // redundant message size
     uint16_t m_crc;         //!< CRC-16 over the message data.
 };
 
@@ -92,7 +94,7 @@ public:
      * @retval kErpcStatus_CrcCheckFailed When receiving failed.
      * @retval other Subclass may return other errors from the underlyingReceive() method.
      */
-    virtual erpc_status_t receive(MessageBuffer *message) override;
+    virtual erpc_status_t receive(const Hash& channel, MessageBuffer *message, bool skipCrc = false) override;
 
     /*!
      * @brief Function to send prepared message.
@@ -102,7 +104,7 @@ public:
      * @retval kErpcStatus_Success When sending was successful.
      * @retval other Subclass may return other errors from the underlyingSend() method.
      */
-    virtual erpc_status_t send(MessageBuffer *message) override;
+    virtual erpc_status_t send(const Hash& channel, MessageBuffer *message) override;
 
     /*!
      * @brief This functions sets the CRC-16 implementation.
@@ -125,10 +127,10 @@ protected:
      * @param[in] data Buffer to send.
      * @param[in] size Size of data to send.
      *
-     * @retval kErpcStatus_Success When data was written successfully.
-     * @retval kErpcStatus_Fail When writing data ends with error.
+     * @retval Amount of Bytes written when data was written successfully.
+     * @retval -1 (std::numeric_limits<uint32_t>::max()) When writing data ends with error.
      */
-    virtual erpc_status_t underlyingSend(const uint8_t *data, uint32_t size) = 0;
+    virtual uint32_t underlyingSend(const erpc::Hash& channel, const uint8_t *data, uint32_t size) = 0;
 
     /*!
      * @brief Subclasses must implement this function to receive data.
@@ -139,7 +141,13 @@ protected:
      * @retval kErpcStatus_Success When data was read successfully.
      * @retval kErpcStatus_Fail When reading data ends with error.
      */
-    virtual erpc_status_t underlyingReceive(uint8_t *data, uint32_t size) = 0;
+    virtual erpc_status_t underlyingReceive(const erpc::Hash& channel, uint8_t *data, uint32_t size) = 0;
+
+private:
+    Header headerBuffer_;
+    bool headerReceived_ = false;
+    bool headerSend_ = false;
+    uint32_t sentBytesInBuffer_ = 0;
 };
 
 } // namespace erpc

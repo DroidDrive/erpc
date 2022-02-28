@@ -22,6 +22,10 @@
 // Definitions
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace erpc{
+    using Hash = uint32_t;
+}
+
 /*! @brief eRPC status return codes. */
 enum _erpc_status
 {
@@ -80,7 +84,10 @@ enum _erpc_status
     kErpcStatus_NestedCallFailure,
 
     //! When sending address from bigger architecture to smaller.
-    kErpcStatus_BadAddressScale
+    kErpcStatus_BadAddressScale,
+
+    //! Receive (or send) is pending, yield
+    kErpcStatus_Pending
 };
 
 /*! @brief Type used for all status and error return values. */

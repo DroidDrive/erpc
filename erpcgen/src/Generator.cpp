@@ -412,12 +412,15 @@ data_list Generator::makeGroupInterfacesTemplateData(Group *group)
 
         // TODO: for C only?
         ifaceInfo["serviceClassName"] = getOutputName(iface) + "_service";
+        ifaceInfo["serviceClassName2"] = getOutputName(iface) + "Service";
 
         Log::info("%d: (%d) %s\n", n++, iface->getUniqueId(), iface->getName().c_str());
 
         /* Has interface function declared as non-external? */
         data_list functions = getFunctionsTemplateData(group, iface);
         ifaceInfo["functions"] = functions;
+        ifaceInfo["length"] = functions.size();
+
         ifaceInfo["isNonExternalInterface"] = false;
         for (unsigned int i = 0; i < functions.size(); ++i)
         {

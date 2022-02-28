@@ -28,80 +28,94 @@ using namespace erpc;
 // Variables
 ////////////////////////////////////////////////////////////////////////////////
 
-// global client variables
-ERPC_MANUALLY_CONSTRUCTED(ClientManager, s_client);
-ClientManager *g_client;
-#pragma weak g_client
-ERPC_MANUALLY_CONSTRUCTED(BasicCodecFactory, s_codecFactory);
-ERPC_MANUALLY_CONSTRUCTED(Crc16, s_crc16);
-
+// // global client variables
+// ERPC_MANUALLY_CONSTRUCTED(ClientManager, s_client);
+// ClientManager *g_client;
+// #pragma weak g_client
+// ERPC_MANUALLY_CONSTRUCTED(BasicCodecFactory, s_codecFactory);
+// ERPC_MANUALLY_CONSTRUCTED(Crc16, s_crc16);
+ERPC_MANUALLY_CONSTRUCTED_ARRAY(ClientManager, s_clients, ERPC_CLIENT_COUNT);
+ClientManager* g_clients[ERPC_CLIENT_COUNT] = { nullptr };
+// #pragma weak g_client0
+ERPC_MANUALLY_CONSTRUCTED_ARRAY(BasicCodecFactory, s_codecFactorys, ERPC_CLIENT_COUNT);
+ERPC_MANUALLY_CONSTRUCTED_ARRAY(Crc16, s_crc16s, ERPC_CLIENT_COUNT);
+static size_t clientCounter = 0;
 ////////////////////////////////////////////////////////////////////////////////
 // Code
 ////////////////////////////////////////////////////////////////////////////////
 
-void erpc_client_init(erpc_transport_t transport, erpc_mbf_t message_buffer_factory)
-{
+int erpc_client_init(erpc_transport_t transport, erpc_mbf_t message_buffer_factory) {
     assert(transport);
 
-    Transport *castedTransport;
+    Transport* castedTransport;
 
-    // Init factories.
-    s_codecFactory.construct();
+    if (clientCounter < ERPC_CLIENT_COUNT) {
+        // Init factories.
+        s_codecFactorys[clientCounter].construct();
 
-    // Init client manager with the provided transport.
-    s_client.construct();
-    castedTransport = reinterpret_cast<Transport *>(transport);
-    s_crc16.construct();
-    castedTransport->setCrc16(s_crc16.get());
-    s_client->setTransport(castedTransport);
-    s_client->setCodecFactory(s_codecFactory);
-    s_client->setMessageBufferFactory(reinterpret_cast<MessageBufferFactory *>(message_buffer_factory));
-    g_client = s_client;
+        // Init client manager with the provided transport.
+        s_clients[clientCounter].construct();
+        castedTransport = reinterpret_cast<Transport*>(transport);
+        s_crc16s[clientCounter].construct();
+        castedTransport->setCrc16(s_crc16s[clientCounter].get());
+        s_clients[clientCounter]->setTransport(castedTransport);
+        s_clients[clientCounter]->setCodecFactory(s_codecFactorys[clientCounter]);
+        s_clients[clientCounter]->setMessageBufferFactory(
+            reinterpret_cast<MessageBufferFactory*>(message_buffer_factory));
+        g_clients[clientCounter] = s_clients[clientCounter];
+    }
+    return clientCounter < ERPC_CLIENT_COUNT ? clientCounter++ : -1;
 }
 
-void erpc_client_set_error_handler(client_error_handler_t error_handler)
-{
-    if (g_client != NULL)
-    {
-        g_client->setErrorHandler(error_handler);
+void erpc_client_reinit(size_t id, erpc_transport_t transport, erpc_mbf_t message_buffer_factory) {
+    Transport* castedTransport;
+
+    if ( id < clientCounter) {
+        // Init factories.
+        s_codecFactorys[id].construct();
+
+        // Init client manager with the provided transport.
+        s_clients[id].construct();
+        castedTransport = reinterpret_cast<Transport*>(transport);
+        s_crc16s[id].construct();
+        castedTransport->setCrc16(s_crc16s[id].get());
+        s_clients[id]->setTransport(castedTransport);
+        s_clients[id]->setCodecFactory(s_codecFactorys[id]);
+        s_clients[id]->setMessageBufferFactory(reinterpret_cast<MessageBufferFactory *>(message_buffer_factory));
+        g_clients[id] = s_clients[id];
     }
 }
 
-void erpc_client_set_crc(uint32_t crcStart)
-{
-    s_crc16->setCrcStart(crcStart);
+void erpc_client_set_error_handler(size_t id, client_error_handler_t error_handler) {
+    if (g_clients[id] != NULL) {
+        g_clients[id]->setErrorHandler(error_handler);
+    }
 }
+
+void erpc_client_set_crc(size_t id, uint32_t crcStart) { s_crc16s[id]->setCrcStart(crcStart); }
 
 #if ERPC_NESTED_CALLS
-void erpc_client_set_server(erpc_server_t server)
-{
-    if (g_client != NULL)
-    {
-        g_client->setServer(reinterpret_cast<Server *>(server));
+void erpc_client_set_server(erpc_server_t server) {
+    if (g_client != NULL) {
+        g_client->setServer(reinterpret_cast<Server*>(server));
     }
 }
 
-void erpc_client_set_server_thread_id(void *serverThreadId)
-{
-    if (g_client != NULL)
-    {
-        g_client->setServerThreadId(reinterpret_cast<Thread::thread_id_t *>(serverThreadId));
+void erpc_client_set_server_thread_id(void* serverThreadId) {
+    if (g_client != NULL) {
+        g_client->setServerThreadId(reinterpret_cast<Thread::thread_id_t*>(serverThreadId));
     }
 }
 #endif
 
 #if ERPC_MESSAGE_LOGGING
-bool erpc_client_add_message_logger(erpc_transport_t transport)
-{
+bool erpc_client_add_message_logger(erpc_transport_t transport) {
     bool retVal;
 
-    if (g_client == NULL)
-    {
+    if (g_client == NULL) {
         retVal = false;
-    }
-    else
-    {
-        retVal = g_client->addMessageLogger(reinterpret_cast<Transport *>(transport));
+    } else {
+        retVal = g_client->addMessageLogger(reinterpret_cast<Transport*>(transport));
     }
 
     return retVal;
@@ -109,25 +123,22 @@ bool erpc_client_add_message_logger(erpc_transport_t transport)
 #endif
 
 #if ERPC_PRE_POST_ACTION
-void erpc_client_add_pre_cb_action(pre_post_action_cb preCB)
-{
+void erpc_client_add_pre_cb_action(pre_post_action_cb preCB) {
     assert(g_client);
 
     g_client->addPreCB(preCB);
 }
 
-void erpc_client_add_post_cb_action(pre_post_action_cb postCB)
-{
+void erpc_client_add_post_cb_action(pre_post_action_cb postCB) {
     assert(g_client);
 
     g_client->addPostCB(postCB);
 }
 #endif
 
-void erpc_client_deinit(void)
-{
-    s_crc16.destroy();
-    s_client.destroy();
-    s_codecFactory.destroy();
-    g_client = NULL;
+void erpc_client_deinit(size_t id) {
+    s_crc16s[id].destroy();
+    s_clients[id].destroy();
+    s_codecFactorys[id].destroy();
+    g_clients[id] = NULL;
 }

@@ -37,6 +37,7 @@ public:
     : m_parameters("(fn)")
     , m_returnType(nullptr)
     , m_isOneway(false)
+    , m_skipCrcCheck(false)
     {
     }
 
@@ -78,6 +79,7 @@ public:
      */
     bool isOneway() const { return m_isOneway; }
 
+    bool getSkipCrcCheck() const {return m_skipCrcCheck; }
     /*!
      * @brief This function set true/false, when function return type is/isn't oneway.
      *
@@ -85,6 +87,7 @@ public:
      */
     void setIsOneway(bool argIsOneway) { m_isOneway = argIsOneway; }
 
+    void setSkipCrcCheck(bool skip) { m_skipCrcCheck = skip; }
     /*!
      * @brief This function returns description about the interface function.
      *
@@ -105,6 +108,7 @@ protected:
     StructType m_parameters;    /*!< Function parameters are saved as structure members. */
     StructMember *m_returnType; /*!< Function return data type. */
     bool m_isOneway;            /*!< If false then communication is bidirectional. */
+    bool m_skipCrcCheck;
 };
 
 class Interface;

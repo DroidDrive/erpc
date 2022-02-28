@@ -13,7 +13,7 @@
 #include "ParseErrors.h"
 #include "annotations.h"
 #include "format_string.h"
-#include "md5.h"
+#include "crc24.h"
 
 #include <algorithm>
 #include <set>
@@ -176,8 +176,9 @@ data_map PythonGenerator::getFunctionTemplateData(Group *group, Function *fn)
 
     info["name"] = getOutputName(fn);
     info["prototype"] = proto;
-    info["id"] = md5(proto);
+    info["id"] = std::to_string(crc24_decode(proto));
     info["isOneway"] = fn->isOneway();
+    info["skipCrcCheck"] = fn->getSkipCrcCheck();
     info["isReturnValue"] = !fn->isOneway();
     setTemplateComments(fn, info);
 

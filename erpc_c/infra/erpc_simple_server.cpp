@@ -8,6 +8,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "erpc_common.h"
 #include "erpc_simple_server.h"
 
 using namespace erpc;
@@ -28,71 +29,116 @@ void SimpleServer::disposeBufferAndCodec(Codec *codec)
     }
 }
 
-erpc_status_t SimpleServer::runInternal(void)
+erpc_status_t SimpleServer::runInternal(erpc::Hash& channel)
 {
-    MessageBuffer buff;
-    Codec *codec = NULL;
-
-    // Handle the request.
-    message_type_t msgType;
-    uint32_t serviceId;
-    Md5Hash methodId;
-    uint32_t sequence;
-
-    erpc_status_t err = runInternalBegin(&codec, buff, msgType, serviceId, methodId, sequence);
-    if (err == kErpcStatus_Success)
-    {
-        err = runInternalEnd(codec, msgType, serviceId, methodId, sequence);
+    erpc_status_t err = kErpcStatus_Success;
+    if(m_state == State::SEND_DONE || m_state == State::RECEIVE){
+        /// beginning or already started receiving?
+        /// receive more input data (header + payload)
+        err = runInternalBegin(&m_codec, m_buff, m_msgType, m_serviceId, channel, m_sequence);
+        /// successful done receiving?
+        if (err == kErpcStatus_Success)
+        {
+            /// acknoledge, go forward
+            m_state = State::RECEIVE_DONE;
+        }
+        else if (err == kErpcStatus_Pending){
+            /// do nothing
+        }
+        else{
+            /// pretend that nothing happened, reset state machine to the beginning
+            m_state = State::SEND_DONE;
+            return err;
+        }
     }
-
+    if(m_state == State::RECEIVE_DONE || m_state == State::PROCESS || m_state == State::PROCESS_DONE || m_state == State::SEND){
+        /// successful done receiving?
+        /// start processing and response sending
+        err = runInternalEnd(m_codec, m_msgType, m_serviceId, channel, m_sequence);
+        if (err == kErpcStatus_Success)
+        {
+            /// acknowledge, were done, go to start
+            m_state = State::SEND_DONE;
+        }
+        else if (err == kErpcStatus_Pending){
+            /// do nothing
+        }
+        else{
+            /// pretend that nothing happened, reset state machine to the beginning
+            m_state = State::SEND_DONE;
+            return err;
+        }
+    }
+    
+    /// return whatever status we have
     return err;
 }
 
 erpc_status_t SimpleServer::runInternalBegin(Codec **codec, MessageBuffer &buff, message_type_t &msgType,
-                                             uint32_t &serviceId, Md5Hash methodId, uint32_t &sequence)
+                                             uint32_t &serviceId, Hash& methodId, uint32_t &sequence)
 {
     erpc_status_t err = kErpcStatus_Success;
 
-    if (m_messageFactory->createServerBuffer() == true)
+    if(m_state == State::SEND_DONE)
     {
-        buff = m_messageFactory->create();
-        if (!buff.get())
+        if (m_messageFactory->createServerBuffer() == true)
         {
+            buff = m_messageFactory->create();
+            if (!buff.get())
+            {
+                err = kErpcStatus_MemoryError;
+            }
+        }
+        else{
             err = kErpcStatus_MemoryError;
+        }
+
+        // Receive the next invocation request.
+        if (err == kErpcStatus_Success)
+        {
+            m_state = State::RECEIVE;
         }
     }
 
-    // Receive the next invocation request.
-    if (err == kErpcStatus_Success)
+    if(m_state == State::RECEIVE)
     {
-        err = m_transport->receive(&buff);
-    }
-
+        err = m_transport->receive(methodId, &buff, (*codec)->getSkipCrc());
+        // Receive the next invocation request.
+        if (err == kErpcStatus_Success)
+        {
+            m_state = State::RECEIVE_DONE;
 #if ERPC_PRE_POST_ACTION
-    pre_post_action_cb preCB = this->getPreCB();
-    if (preCB != NULL)
-    {
-        preCB();
-    }
+            pre_post_action_cb preCB = this->getPreCB();
+            if (preCB != NULL)
+            {
+                preCB();
+            }
 #endif
 
 #if ERPC_MESSAGE_LOGGING
-    if (err == kErpcStatus_Success)
-    {
-        err = logMessage(&buff);
-    }
-#endif
+            err = logMessage(&buff);
+#endif       
+            *codec = m_codecFactory->create();
+            if (*codec == NULL)
+            {
+                err = kErpcStatus_MemoryError;
+            }
 
-    if (err == kErpcStatus_Success)
-    {
-        *codec = m_codecFactory->create();
-        if (*codec == NULL)
-        {
-            err = kErpcStatus_MemoryError;
+            if (err == kErpcStatus_Success)
+            {
+                (*codec)->setBuffer(buff);
+
+                err = readHeadOfMessage(*codec, msgType, serviceId, methodId, sequence);
+                if (err != kErpcStatus_Success)
+                {
+                    // Dispose of buffers and codecs.
+                    disposeBufferAndCodec(*codec);
+                }
+            }
         }
     }
 
-    if (err != kErpcStatus_Success)
+    if (err != kErpcStatus_Success && err != kErpcStatus_Pending)
     {
         // Dispose of buffers.
         if (buff.get() != NULL)
@@ -101,28 +147,28 @@ erpc_status_t SimpleServer::runInternalBegin(Codec **codec, MessageBuffer &buff,
         }
     }
 
-    if (err == kErpcStatus_Success)
-    {
-        (*codec)->setBuffer(buff);
-
-        err = readHeadOfMessage(*codec, msgType, serviceId, methodId, sequence);
-        if (err != kErpcStatus_Success)
-        {
-            // Dispose of buffers and codecs.
-            disposeBufferAndCodec(*codec);
-        }
-    }
-
     return err;
 }
 
-erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType, uint32_t serviceId, Md5Hash methodId,
+erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType, uint32_t serviceId, Hash methodId,
                                            uint32_t sequence)
 {
-    erpc_status_t err = processMessage(codec, msgType, serviceId, methodId, sequence);
+    erpc_status_t err = kErpcStatus_Success;
 
-    if (err == kErpcStatus_Success)
+    if(m_state == State::RECEIVE_DONE){
+        m_state = State::PROCESS;
+        err = processMessage(codec, msgType, serviceId, methodId, sequence);
+        if (err == kErpcStatus_Success){
+            m_state = State::PROCESS_DONE;
+        }
+        else{
+            return kErpcStatus_Fail;
+        }
+    }
+
+    if(m_state == State::PROCESS_DONE)
     {
+        m_state = State::SEND;
         if (msgType != kOnewayMessage)
         {
 #if ERPC_MESSAGE_LOGGING
@@ -130,7 +176,7 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
             if (err == kErpcStatus_Success)
             {
 #endif
-                err = m_transport->send(codec->getBuffer());
+                err = m_transport->send(methodId, codec->getBuffer());
 #if ERPC_MESSAGE_LOGGING
             }
 #endif
@@ -143,10 +189,12 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
             postCB();
         }
 #endif
+        if(err == kErpcStatus_Success){
+            m_state = State::SEND_DONE;
+              // Dispose of buffers and codecs.
+            disposeBufferAndCodec(codec);
+        }
     }
-
-    // Dispose of buffers and codecs.
-    disposeBufferAndCodec(codec);
 
     return err;
 }
@@ -154,9 +202,10 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
 erpc_status_t SimpleServer::run(void)
 {
     erpc_status_t err = kErpcStatus_Success;
+    erpc::Hash channel{};
     while (!err && m_isServerOn)
     {
-        err = runInternal();
+        err = runInternal(channel);
     }
     return err;
 }
@@ -218,13 +267,23 @@ erpc_status_t SimpleServer::poll(void)
 
     if (m_isServerOn)
     {
-        if (m_transport->hasMessage() == true)
-        {
-            err = runInternal();
+        /// do your usual thing (check for received message and run internals) 
+        /// when we have no current special state (we are done with whatever was before)
+        if(m_state == State::SEND_DONE){
+            m_last_channel = m_transport->hasMessage();
+            if (m_last_channel != 0)
+            {
+                err = runInternal(m_last_channel);
+            }
+            else
+            {
+                err = kErpcStatus_Success;
+            }
         }
-        else
-        {
-            err = kErpcStatus_Success;
+        else{
+            /// else if the state is whatever else, we have succesfully read (or are stille reading) 
+            /// an incomig message and now have to process it / send the answer 
+            err = runInternal(m_last_channel);
         }
     }
     else
@@ -238,4 +297,10 @@ erpc_status_t SimpleServer::poll(void)
 void SimpleServer::stop(void)
 {
     m_isServerOn = false;
+}
+
+
+void SimpleServer::flush(void)
+{
+    m_transport->flush();
 }

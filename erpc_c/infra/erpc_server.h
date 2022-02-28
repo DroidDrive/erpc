@@ -13,6 +13,7 @@
 
 #include "erpc_client_server_common.h"
 #include "erpc_codec.h"
+#include "erpc_transport.h"
 #include "erpc_config_internal.h"
 #if ERPC_NESTED_CALLS
 #include "erpc_client_manager.h"
@@ -87,7 +88,7 @@ public:
      *
      * @return Based on handleInvocation implementation.
      */
-    virtual erpc_status_t handleInvocation(Md5Hash methodId, uint32_t sequence, Codec *codec,
+    virtual erpc_status_t handleInvocation(Hash methodId, uint32_t sequence, Codec *codec,
                                            MessageBufferFactory *messageFactory) = 0;
 
 protected:
@@ -143,7 +144,7 @@ public:
      *
      * @param[in] transport Transport layer to use.
      */
-    void setTransport(Transport *transport);
+    void setTransport(erpc::Transport *transport);
 
     /*!
      * @brief Add service.
@@ -169,10 +170,12 @@ public:
      */
     virtual void stop(void) = 0;
 
+    virtual void flush(void) = 0;
+
 protected:
     MessageBufferFactory *m_messageFactory; /*!< Contains MessageBufferFactory to use. */
     CodecFactory *m_codecFactory;           /*!< Contains CodecFactory to use. */
-    Transport *m_transport;                 /*!< Transport layer used to send and receive data. */
+    erpc::Transport *m_transport;                 /*!< Transport layer used to send and receive data. */
     Service *m_firstService;                /*!< Contains pointer to first service. */
 
     /*!
@@ -186,7 +189,7 @@ protected:
      *
      * @returns #kErpcStatus_Success or based on codec startReadMessage.
      */
-    virtual erpc_status_t processMessage(Codec *codec, message_type_t msgType, uint32_t serviceId, Md5Hash methodId,
+    virtual erpc_status_t processMessage(Codec *codec, message_type_t msgType, uint32_t serviceId, Hash methodId,
                                          uint32_t sequence);
 
     /*!
@@ -201,7 +204,7 @@ protected:
      * @returns #kErpcStatus_Success or based on service handleInvocation.
      */
     virtual erpc_status_t readHeadOfMessage(Codec *codec, message_type_t &msgType, uint32_t &serviceId,
-                                            Md5Hash methodId, uint32_t &sequence);
+                                            Hash &methodId, uint32_t &sequence);
 
     /*!
      * @brief This function finds service base on service ID.

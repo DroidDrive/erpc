@@ -13,12 +13,11 @@
 #include "ParseErrors.h"
 #include "annotations.h"
 #include "format_string.h"
-#include "md5.h"
+#include "crc24.h"
 
 #include <algorithm>
 #include <set>
 #include <sstream>
-
 
 using namespace erpcgen;
 using namespace cpptempl;
@@ -1385,6 +1384,7 @@ data_map CGenerator::getFunctionBaseTemplateData(Group *group, FunctionBase *fn)
 
     info["isOneway"] = fn->isOneway();
     info["isReturnValue"] = !fn->isOneway();
+    info["skipCrcCheck"] = fn->getSkipCrcCheck();
     info["isSendValue"] = false;
     setTemplateComments(fnSymbol, info);
     info["needTempVariableServer"] = false;
@@ -1417,6 +1417,16 @@ data_map CGenerator::getFunctionBaseTemplateData(Group *group, FunctionBase *fn)
             returnInfo["isNullable"] = true;
             returnInfo["nullableName"] = result;
         }
+        if (findAnnotation(structMember, SKIP_CRC_ANNOTATION) == nullptr)
+        {
+            returnInfo["skipCrc"] = true;
+            returnInfo["nullableName"] = "";
+        }
+        else
+        {
+            returnInfo["skipCrc"] = false;
+            returnInfo["nullableName"] = result;
+        }
         bool isShared = (findAnnotation(structMember, SHARED_ANNOTATION) != nullptr);
         if (!isShared)
         {
@@ -1429,6 +1439,7 @@ data_map CGenerator::getFunctionBaseTemplateData(Group *group, FunctionBase *fn)
         }
 
         // due to compatibility with function parameters.
+        returnInfo["name"] = result;
         returnInfo["lengthName"] = "";
         returnInfo["nullVariable"] = "";
 
@@ -1686,17 +1697,25 @@ data_map CGenerator::getFunctionTemplateData(Group *group, Function *fn)
     else
     {
         info["isCallback"] = false;
-        string serverProto = getFunctionServerCall(fn);
+        string serverProto = getFunctionServerCall(fn, nullptr, "service::");
         info["serverPrototype"] = serverProto;
         info["serviceId"] = "";
     }
 
-    string proto = getFunctionPrototype(group, fn);
+    std::string proto = getFunctionPrototype(group, fn);
     info["prototype"] = proto;
+    info["prototypeCallWithClient"] = getFunctionPrototypeCallWithClient(group, fn, "", "remote::");
+    info["prototypeWithClient"] = getFunctionPrototypeWithClient(group, fn, getOutputName(fn));
+    info["prototypeWithId"] = getFunctionPrototypeWithGenericType(group, fn, getOutputName(fn), "", true);
+    info["prototypeWithIdAndNs"] = getFunctionPrototypeWithGenericType(group, fn, getOutputName(fn), "remote::", true);
+    info["prototype2"] = getFunctionPrototypeWithGenericType(group, fn, getOutputName(fn));
+    info["prototype2WithNamespace"] = getFunctionPrototypeWithClient(group, fn, getOutputName(fn), "remote::");
     info["name"] = getOutputName(fn);
     std::string specialProto = getFunctionPrototype(group, fn, "", true);
-    std::string hash = md5(specialProto);
+    std::string hash = std::to_string(crc24_decode(specialProto));
     info["id"] = hash;
+    info["ret"] = getFunctionDataType(group, fn);
+    info["genericRetStruct"] = getOutputName(fn) + "Return";
 
     return info;
 }
@@ -1902,14 +1921,14 @@ string CGenerator::getErrorReturnValue(FunctionBase *fn)
     }
 }
 
-string CGenerator::getFunctionServerCall(Function *fn, FunctionType *functionType)
+string CGenerator::getFunctionServerCall(Function *fn, FunctionType *functionType, string ns)
 {
     string proto = "";
     if (!fn->getReturnType()->isVoid())
     {
         proto += "result = ";
     }
-    proto += getOutputName(fn);
+    proto += ns + getOutputName(fn);
     proto += "(";
 
     auto params = (functionType) ? functionType->getParameters().getMembers() : fn->getParameters().getMembers();
@@ -1947,13 +1966,20 @@ string CGenerator::getFunctionServerCall(Function *fn, FunctionType *functionTyp
     return proto + ");";
 }
 
+string CGenerator::getFunctionDataType(Group *group, FunctionBase *fn){
+    string str;
+    DataType *dataTypeReturn = fn->getReturnType();
+    // str += getExtraPointerInReturn(dataTypeReturn);
+    return getTypenameName(dataTypeReturn, str);
+}
 string CGenerator::getFunctionPrototype(Group *group, FunctionBase *fn, std::string name, bool skipVariableNames)
 {
     DataType *dataTypeReturn = fn->getReturnType();
-    string proto = getExtraPointerInReturn(dataTypeReturn);
-    if (proto == "*")
+    string proto = "";
+    string ptr = getExtraPointerInReturn(dataTypeReturn);
+    if (ptr == "*")
     {
-        proto += " ";
+        ptr += " ";
     }
 
     Symbol *symbol = dynamic_cast<Symbol *>(fn);
@@ -2097,8 +2123,490 @@ string CGenerator::getFunctionPrototype(Group *group, FunctionBase *fn, std::str
     {
         proto = "(" + proto + ")";
     }
-    return getTypenameName(dataTypeReturn, proto); //! return type
+    return getTypenameName(dataTypeReturn, ptr + proto); //! return type
 }
+
+string CGenerator::getFunctionPrototypeWithClient(Group *group, FunctionBase *fn, std::string name, std::string ns, bool skipVariableNames)
+{
+    DataType *dataTypeReturn = fn->getReturnType();
+    string proto = "";
+    string ptr = getExtraPointerInReturn(dataTypeReturn);
+    if (ptr == "*")
+    {
+        ptr += " ";
+    }
+
+    Symbol *symbol = dynamic_cast<Symbol *>(fn);
+    assert(symbol);
+
+    FunctionType *funType = dynamic_cast<FunctionType *>(fn);
+    if (name.empty())
+    {
+        string functionName = getOutputName(symbol);
+        if (funType) /* Need add '(*name)' for function type definition. */
+        {
+            proto += "(*" + functionName + ")";
+        }
+        else /* Use function name only. */
+        {
+            proto += functionName;
+        }
+    }
+    else
+    {
+        proto += name + "_call";
+    }
+
+    proto += "(";
+
+    auto params = fn->getParameters().getMembers();
+    // add interface id and function id parameters for common callbacks shim code function
+    // if (!name.empty())
+    // {
+    //     proto += "uint32_t serviceID, uint32_t functionID";
+    //     if (params.size() > 0)
+    //     {
+    //         proto += ", ";
+    //     }
+    // }
+
+    proto += "ClientManager* g_client, bool restartRequest";
+    if(params.size() > 0){
+        proto += ", ";
+    }
+    
+    if (params.size())
+    {
+        unsigned int n = 0;
+        for (auto it : params)
+        {
+            bool isLast = (n == params.size() - 1);
+            string paramSignature = "";
+            if(!skipVariableNames){
+                paramSignature = getOutputName(it);
+            }
+            DataType *dataType = it->getDataType();
+            DataType *trueDataType = dataType->getTrueDataType();
+
+            /* Add '*' to data types. */
+            if (((trueDataType->isBuiltin() || trueDataType->isEnum()) &&
+                 (it->getDirection() != kInDirection && !trueDataType->isString())) ||
+                (trueDataType->isFunction() &&
+                 (it->getDirection() == kOutDirection || it->getDirection() == kInoutDirection)))
+            {
+                paramSignature = "* " + paramSignature;
+            }
+            else
+            {
+                string directionPointer = getExtraDirectionPointer(it);
+                paramSignature = directionPointer + returnSpaceWhenNotEmpty(directionPointer) + paramSignature;
+            }
+            paramSignature = getTypenameName(dataType, paramSignature);
+
+            if (!(m_def->hasProgramSymbol() &&
+                  (findAnnotation(m_def->getProgramSymbol(), NO_CONST_PARAM) ||
+                   ((funType && findAnnotation(funType, NO_CONST_PARAM)) ||
+                    (!funType && findAnnotation(dynamic_cast<Function *>(fn), NO_CONST_PARAM))) ||
+                   findAnnotation(it, NO_CONST_PARAM))))
+            {
+                if ((dataType->isString() || dataType->isFunction() || trueDataType->isStruct() ||
+                     trueDataType->isList() || trueDataType->isArray() || trueDataType->isBinary() ||
+                     trueDataType->isUnion()) &&
+                    it->getDirection() == kInDirection)
+                {
+                    bool pass = true;
+                    if (trueDataType->isArray())
+                    {
+                        ArrayType *arrayType = dynamic_cast<ArrayType *>(trueDataType);
+                        assert(arrayType);
+                        DataType *elementType = arrayType->getElementType()->getTrueDataType();
+                        if (elementType->isArray() || elementType->isString() || elementType->isList() ||
+                            elementType->isBinary())
+                        {
+                            pass = false;
+                        }
+                    }
+                    if (trueDataType->isList())
+                    {
+                        ListType *listType = dynamic_cast<ListType *>(trueDataType);
+                        assert(listType);
+                        DataType *elementType = listType->getElementType()->getTrueDataType();
+                        if (elementType->isArray() || elementType->isString() || elementType->isList() ||
+                            elementType->isBinary())
+                        {
+                            pass = false;
+                        }
+                    }
+                    if (pass)
+                    {
+                        proto += "const ";
+                    }
+                }
+            }
+
+            DataType *trueContainerDataType = dataType->getTrueContainerDataType();
+            if (trueContainerDataType->isStruct())
+            {
+                StructType *structType = dynamic_cast<StructType *>(trueContainerDataType);
+                assert(structType);
+                // Todo: Need check if members are/aren't shared.
+                if (group != nullptr)
+                {
+                    const set<_param_direction> directions = group->getSymbolDirections(structType);
+                    if (!findAnnotation(it, SHARED_ANNOTATION) &&
+                        (directions.count(kInoutDirection) &&
+                         (directions.count(kOutDirection) || directions.count(kReturn))))
+                    {
+                        throw syntax_error(
+                            format_string("line %d: structs, lists, and binary cannot be used as both "
+                                          "inout and out parameters in the same application",
+                                          it->getLocation().m_firstLine));
+                    }
+                }
+            }
+
+            proto += paramSignature;
+            if (!isLast)
+            {
+                proto += ", ";
+            }
+            ++n;
+        }
+    }
+    else
+    {
+        // proto += "void";
+    }
+    proto += ")";
+    if (dataTypeReturn->isArray())
+    {
+        proto = "(" + proto + ")";
+    }
+    return name + "Return_t " + ns + proto;
+}
+
+string CGenerator::getFunctionPrototypeCallWithClient(Group *group, FunctionBase *fn, std::string name, std::string ns, bool skipVariableNames)
+{
+    DataType *dataTypeReturn = fn->getReturnType();
+    string proto = "";
+    string ptr = getExtraPointerInReturn(dataTypeReturn);
+    if (ptr == "*")
+    {
+        ptr += " ";
+    }
+
+    Symbol *symbol = dynamic_cast<Symbol *>(fn);
+    assert(symbol);
+
+    FunctionType *funType = dynamic_cast<FunctionType *>(fn);
+    if (name.empty())
+    {
+        string functionName = getOutputName(symbol);
+        if (funType) /* Need add '(*name)' for function type definition. */
+        {
+            proto += "(*" + functionName + ")";
+        }
+        else /* Use function name only. */
+        {
+            proto += ns + functionName + "_call";
+        }
+    }
+    else
+    {
+        proto += ns + name;
+    }
+
+    proto += "(";
+
+    auto params = fn->getParameters().getMembers();
+    // add interface id and function id parameters for common callbacks shim code function
+    if (!name.empty())
+    {
+        proto += "uint32_t serviceID, uint32_t functionID";
+        if (params.size() > 0)
+        {
+            proto += ", ";
+        }
+    }
+
+    proto += "g_client, restartRequest";
+    if (params.size() > 0){
+        proto += ", ";
+    }
+
+    
+    if (params.size())
+    {
+        unsigned int n = 0;
+        for (auto it : params)
+        {
+            bool isLast = (n == params.size() - 1);
+            string paramSignature = "";
+            if(!skipVariableNames){
+                paramSignature = getOutputName(it);
+            }
+            DataType *dataType = it->getDataType();
+            DataType *trueDataType = dataType->getTrueDataType();
+
+            /* Add '*' to data types. */
+            if (((trueDataType->isBuiltin() || trueDataType->isEnum()) &&
+                 (it->getDirection() != kInDirection && !trueDataType->isString())) ||
+                (trueDataType->isFunction() &&
+                 (it->getDirection() == kOutDirection || it->getDirection() == kInoutDirection)))
+            {
+                //paramSignature = "* " + paramSignature;
+            }
+            else
+            {
+                string directionPointer = getExtraDirectionPointer(it);
+                paramSignature = directionPointer + returnSpaceWhenNotEmpty(directionPointer) + paramSignature;
+            }
+            //paramSignature = getTypenameName(dataType, paramSignature);
+
+            if (!(m_def->hasProgramSymbol() &&
+                  (findAnnotation(m_def->getProgramSymbol(), NO_CONST_PARAM) ||
+                   ((funType && findAnnotation(funType, NO_CONST_PARAM)) ||
+                    (!funType && findAnnotation(dynamic_cast<Function *>(fn), NO_CONST_PARAM))) ||
+                   findAnnotation(it, NO_CONST_PARAM))))
+            {
+                if ((dataType->isString() || dataType->isFunction() || trueDataType->isStruct() ||
+                     trueDataType->isList() || trueDataType->isArray() || trueDataType->isBinary() ||
+                     trueDataType->isUnion()) &&
+                    it->getDirection() == kInDirection)
+                {
+                    bool pass = true;
+                    if (trueDataType->isArray())
+                    {
+                        ArrayType *arrayType = dynamic_cast<ArrayType *>(trueDataType);
+                        assert(arrayType);
+                        DataType *elementType = arrayType->getElementType()->getTrueDataType();
+                        if (elementType->isArray() || elementType->isString() || elementType->isList() ||
+                            elementType->isBinary())
+                        {
+                            pass = false;
+                        }
+                    }
+                    if (trueDataType->isList())
+                    {
+                        ListType *listType = dynamic_cast<ListType *>(trueDataType);
+                        assert(listType);
+                        DataType *elementType = listType->getElementType()->getTrueDataType();
+                        if (elementType->isArray() || elementType->isString() || elementType->isList() ||
+                            elementType->isBinary())
+                        {
+                            pass = false;
+                        }
+                    }
+                    if (pass)
+                    {
+                        //proto += "const ";
+                    }
+                }
+            }
+
+            DataType *trueContainerDataType = dataType->getTrueContainerDataType();
+            if (trueContainerDataType->isStruct())
+            {
+                StructType *structType = dynamic_cast<StructType *>(trueContainerDataType);
+                assert(structType);
+                // Todo: Need check if members are/aren't shared.
+                if (group != nullptr)
+                {
+                    const set<_param_direction> directions = group->getSymbolDirections(structType);
+                    if (!findAnnotation(it, SHARED_ANNOTATION) &&
+                        (directions.count(kInoutDirection) &&
+                         (directions.count(kOutDirection) || directions.count(kReturn))))
+                    {
+                        throw syntax_error(
+                            format_string("line %d: structs, lists, and binary cannot be used as both "
+                                          "inout and out parameters in the same application",
+                                          it->getLocation().m_firstLine));
+                    }
+                }
+            }
+
+            proto += paramSignature;
+            if (!isLast)
+            {
+                proto += ", ";
+            }
+            ++n;
+        }
+    }
+    else
+    {
+        // proto += "void";
+    }
+    proto += ")";
+    if (dataTypeReturn->isArray())
+    {
+        proto = "(" + proto + ")";
+    }
+    return proto;
+}
+
+string CGenerator::getFunctionPrototypeWithGenericType(Group *group, FunctionBase *fn, std::string name, std::string ns, bool addIdArg)
+{
+    DataType *dataTypeReturn = fn->getReturnType();
+    string proto = "";
+    string ptr = getExtraPointerInReturn(dataTypeReturn);
+    if (ptr == "*")
+    {
+        ptr += " ";
+    }
+
+    Symbol *symbol = dynamic_cast<Symbol *>(fn);
+    assert(symbol);
+
+    FunctionType *funType = dynamic_cast<FunctionType *>(fn);
+    if (name.empty())
+    {
+        string functionName = getOutputName(symbol);
+        if (funType) /* Need add '(*name)' for function type definition. */
+        {
+            proto += "(*" + functionName + ")";
+        }
+        else /* Use function name only. */
+        {
+            proto += functionName;
+        }
+    }
+    else
+    {
+        proto += name;
+    }
+
+    proto += "(";
+
+    auto params = fn->getParameters().getMembers();
+    // // add interface id and function id parameters for common callbacks shim code function
+    // if (!name.empty())
+    // {
+    //     proto += "uint32_t serviceID, uint32_t functionID";
+    //     if (params.size() > 0)
+    //     {
+    //         proto += ", ";
+    //     }
+    // }
+
+    if(addIdArg){
+        proto += "size_t id, bool restartRequest";
+    }
+    if (params.size() > 0){
+        proto += ", ";
+    }
+
+
+    if (params.size())
+    {
+        unsigned int n = 0;
+        for (auto it : params)
+        {
+            bool isLast = (n == params.size() - 1);
+            string paramSignature = getOutputName(it);
+            DataType *dataType = it->getDataType();
+            DataType *trueDataType = dataType->getTrueDataType();
+
+            /* Add '*' to data types. */
+            if (((trueDataType->isBuiltin() || trueDataType->isEnum()) &&
+                 (it->getDirection() != kInDirection && !trueDataType->isString())) ||
+                (trueDataType->isFunction() &&
+                 (it->getDirection() == kOutDirection || it->getDirection() == kInoutDirection)))
+            {
+                paramSignature = "* " + paramSignature;
+            }
+            else
+            {
+                string directionPointer = getExtraDirectionPointer(it);
+                paramSignature = directionPointer + returnSpaceWhenNotEmpty(directionPointer) + paramSignature;
+            }
+            paramSignature = getTypenameName(dataType, paramSignature);
+
+            if (!(m_def->hasProgramSymbol() &&
+                  (findAnnotation(m_def->getProgramSymbol(), NO_CONST_PARAM) ||
+                   ((funType && findAnnotation(funType, NO_CONST_PARAM)) ||
+                    (!funType && findAnnotation(dynamic_cast<Function *>(fn), NO_CONST_PARAM))) ||
+                   findAnnotation(it, NO_CONST_PARAM))))
+            {
+                if ((dataType->isString() || dataType->isFunction() || trueDataType->isStruct() ||
+                     trueDataType->isList() || trueDataType->isArray() || trueDataType->isBinary() ||
+                     trueDataType->isUnion()) &&
+                    it->getDirection() == kInDirection)
+                {
+                    bool pass = true;
+                    if (trueDataType->isArray())
+                    {
+                        ArrayType *arrayType = dynamic_cast<ArrayType *>(trueDataType);
+                        assert(arrayType);
+                        DataType *elementType = arrayType->getElementType()->getTrueDataType();
+                        if (elementType->isArray() || elementType->isString() || elementType->isList() ||
+                            elementType->isBinary())
+                        {
+                            pass = false;
+                        }
+                    }
+                    if (trueDataType->isList())
+                    {
+                        ListType *listType = dynamic_cast<ListType *>(trueDataType);
+                        assert(listType);
+                        DataType *elementType = listType->getElementType()->getTrueDataType();
+                        if (elementType->isArray() || elementType->isString() || elementType->isList() ||
+                            elementType->isBinary())
+                        {
+                            pass = false;
+                        }
+                    }
+                    if (pass)
+                    {
+                        proto += "const ";
+                    }
+                }
+            }
+
+            DataType *trueContainerDataType = dataType->getTrueContainerDataType();
+            if (trueContainerDataType->isStruct())
+            {
+                StructType *structType = dynamic_cast<StructType *>(trueContainerDataType);
+                assert(structType);
+                // Todo: Need check if members are/aren't shared.
+                if (group != nullptr)
+                {
+                    const set<_param_direction> directions = group->getSymbolDirections(structType);
+                    if (!findAnnotation(it, SHARED_ANNOTATION) &&
+                        (directions.count(kInoutDirection) &&
+                         (directions.count(kOutDirection) || directions.count(kReturn))))
+                    {
+                        throw syntax_error(
+                            format_string("line %d: structs, lists, and binary cannot be used as both "
+                                          "inout and out parameters in the same application",
+                                          it->getLocation().m_firstLine));
+                    }
+                }
+            }
+
+            proto += paramSignature;
+            if (!isLast)
+            {
+                proto += ", ";
+            }
+            ++n;
+        }
+    }
+    else
+    {
+        // proto += "void";
+    }
+    proto += ")";
+    if (dataTypeReturn->isArray())
+    {
+        proto = "(" + proto + ")";
+    }
+    /// kikass13:
+    // change return types to be a struct of whatever is inside the function and a boolean
+    return name + "Return_t " + ns + proto;
+}
+
+
 
 string CGenerator::generateIncludeGuardName(const string &filename)
 {

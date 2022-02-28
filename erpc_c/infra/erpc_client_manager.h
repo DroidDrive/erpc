@@ -15,9 +15,12 @@
 #include "erpc_client_server_common.h"
 #include "erpc_codec.h"
 #include "erpc_config_internal.h"
+#include "erpc_transport.h"
+#include <functional>
 #if ERPC_NESTED_CALLS
 #include "erpc_server.h"
 #include "erpc_threading.h"
+#else
 #endif
 
 /*!
@@ -27,14 +30,14 @@
  */
 
 extern "C" {
-#endif
-
-typedef void (*client_error_handler_t)(erpc_status_t err,
-                                       const erpc::Md5Hash functionID); /*!< eRPC error handler function type. */
 
 #ifdef __cplusplus
+    using client_error_handler_t = std::function<void(erpc_status_t, const erpc::Hash)>;
 }
-
+#else
+typedef void (*client_error_handler_t)(erpc_status_t err,
+                                       const erpc::Hash functionID); /*!< eRPC error handler function type. */
+#endif
 ////////////////////////////////////////////////////////////////////////////////
 // Classes
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,22 +101,22 @@ public:
      *
      * @param[in] transport Transport layer to use.
      */
-    void setTransport(Transport *transport);
+    void setTransport(erpc::Transport *transport);
 
     /*!
      * @brief This function creates request context.
      *
      * @param[in] isOneway True if need send data only, else false.
      */
-    virtual RequestContext createRequest(bool isOneway);
+    virtual RequestContext createRequest(const erpc::Hash& channel, bool isOneway);
 
     /*!
      * @brief This function performs request.
      *
      * @param[in] request Request context to perform.
      */
-    virtual void performRequest(RequestContext &request);
-
+    virtual bool performRequest(RequestContext &request);
+    
     /*!
      * @brief This function releases request context.
      *
@@ -136,8 +139,11 @@ public:
      * @param[in] err Specify function status at the end of eRPC call.
      * @param[in] functionID Specify eRPC function call.
      */
-    void callErrorHandler(erpc_status_t err, const Md5Hash functionID);
+    void callErrorHandler(erpc_status_t err, const erpc::Hash functionID);
 
+    void setId(size_t id){m_id = id;}
+    size_t getId(){return m_id;}
+    
 #if ERPC_NESTED_CALLS
     /*!
      * @brief This function sets server used for nested calls.
@@ -157,9 +163,11 @@ public:
 protected:
     MessageBufferFactory *m_messageFactory; //!< Message buffer factory to use.
     CodecFactory *m_codecFactory;           //!< Codec to use.
-    Transport *m_transport;                 //!< Transport layer to use.
+    erpc::Transport *m_transport;                 //!< Transport layer to use.
     uint32_t m_sequence;                    //!< Sequence number.
     client_error_handler_t m_errorHandler;  //!< Pointer to function error handler.
+    size_t m_id;
+    
 #if ERPC_NESTED_CALLS
     Server *m_server;                     //!< Server used for nested calls.
     Thread::thread_id_t m_serverThreadId; //!< Thread in which server run function is called.
@@ -173,7 +181,7 @@ protected:
      *
      * @param[in] request Request context to perform.
      */
-    virtual void performClientRequest(RequestContext &request);
+    virtual bool performClientRequest(RequestContext &request);
 
 #if ERPC_NESTED_CALLS
     /*!
@@ -183,7 +191,7 @@ protected:
      *
      * @param[in] request Request context to perform.
      */
-    virtual void performNestedClientRequest(RequestContext &request);
+    virtual bool performNestedClientRequest(RequestContext &request);
 #endif
 
     //! @brief Validate that an incoming message is a reply.
@@ -204,6 +212,18 @@ private:
     ClientManager &operator=(const ClientManager &other); //!< Disable copy ctor.
 };
 
+
+enum RequestContextState
+{
+    INVALID = 0,
+    VALID = 1,
+    SENDING = 2,
+    SENT = 3,
+    PENDING = 4,
+    DONE = 5,
+};
+ 
+
 /*!
  * @brief Encapsulates all information about a request.
  *
@@ -212,6 +232,9 @@ private:
 class RequestContext
 {
 public:
+    
+    RequestContext(): m_channel{}, m_state(RequestContextState::INVALID) {}
+
     /*!
      * @brief Constructor.
      *
@@ -221,10 +244,12 @@ public:
      * @param[in] codec Set in inout codec.
      * @param[in] isOneway Set information if codec is only oneway or bidirectional.
      */
-    RequestContext(uint32_t sequence, Codec *codec, bool argIsOneway)
-    : m_sequence(sequence)
-    , m_codec(codec)
-    , m_oneway(argIsOneway)
+    RequestContext(const erpc::Hash& channel, uint32_t sequence, Codec *codec, bool argIsOneway)
+    : m_channel{channel}
+    , m_sequence{sequence}
+    , m_codec{codec}
+    , m_oneway{argIsOneway}
+    , m_state{RequestContextState::VALID}
     {
     }
 
@@ -256,10 +281,17 @@ public:
      */
     void setIsOneway(bool oneway) { m_oneway = oneway; }
 
+    RequestContextState getState() { return m_state;}
+    void setState(RequestContextState state) { m_state = state; }
+
+    const Hash& getChannel() const { return m_channel;}
+
 protected:
+    erpc::Hash m_channel;
     uint32_t m_sequence; //!< Sequence number. To be sure that reply belong to current request.
     Codec *m_codec;      //!< Inout codec. Codec for receiving and sending data.
     bool m_oneway;       //!< When true, request context will be oneway type (only send data).
+    RequestContextState m_state;
 };
 
 } // namespace erpc
