@@ -54,7 +54,6 @@ erpc_status_t FramedTransport::receive(const Hash& channel, MessageBuffer *messa
         if (ret == kErpcStatus_Success)
         {
             /// evaluate redundant message sizes
-            bool messageSizeOk = true;
             uint16_t realMessageSize = 0;
             if(headerBuffer_.m_messageSize == headerBuffer_.m_messageSize2){ // a == b
                 realMessageSize = headerBuffer_.m_messageSize;
@@ -66,7 +65,7 @@ erpc_status_t FramedTransport::receive(const Hash& channel, MessageBuffer *messa
                 realMessageSize = headerBuffer_.m_messageSize2;
             }
             else{
-                messageSizeOk = false;
+                /// todo: ignore?
             }
             /// remember correct message size
             headerBuffer_.m_messageSize = realMessageSize;
