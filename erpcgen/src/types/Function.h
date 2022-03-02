@@ -38,6 +38,7 @@ public:
     , m_returnType(nullptr)
     , m_isOneway(false)
     , m_skipCrcCheck(false)
+    , m_isFast(false)
     {
     }
 
@@ -80,6 +81,9 @@ public:
     bool isOneway() const { return m_isOneway; }
 
     bool getSkipCrcCheck() const {return m_skipCrcCheck; }
+
+    bool isFast() const {return m_isFast; }
+
     /*!
      * @brief This function set true/false, when function return type is/isn't oneway.
      *
@@ -88,6 +92,9 @@ public:
     void setIsOneway(bool argIsOneway) { m_isOneway = argIsOneway; }
 
     void setSkipCrcCheck(bool skip) { m_skipCrcCheck = skip; }
+
+    void setIsFast(bool fast){m_isFast = fast; }
+
     /*!
      * @brief This function returns description about the interface function.
      *
@@ -109,6 +116,7 @@ protected:
     StructMember *m_returnType; /*!< Function return data type. */
     bool m_isOneway;            /*!< If false then communication is bidirectional. */
     bool m_skipCrcCheck;
+    bool m_isFast;
 };
 
 class Interface;

@@ -138,6 +138,9 @@ public:
     void setSkipCrc(bool skip){ skipCrc_ = skip; }
     bool getSkipCrc(){ return skipCrc_; }
     
+    void setFast(bool fast){ fastMessage_ = fast; }
+    bool getFast(){ return fastMessage_; }
+    
     //! @name Encoding
     //@{
     /*!
@@ -446,8 +449,8 @@ protected:
     MessageBuffer::Cursor m_cursor; /*!< Copy data to message buffers. */
     erpc_status_t m_status;         /*!< Status of serialized data. */
 
-private:
     bool skipCrc_ = false;
+    bool fastMessage_ = false; 
 };
 
 /*!

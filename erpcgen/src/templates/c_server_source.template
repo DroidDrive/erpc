@@ -110,6 +110,13 @@ ERPC_MANUALLY_CONSTRUCTED_STATIC({$iface.serviceClassName}, s_{$iface.serviceCla
 {%   endif -- !param.isNullable && param.direction == OutDirection %}
 {%  endif -- shared %}
 {% endfor -- param %}
+
+{% if fn.isFast %}
+    /// this is a special frame, which is small and fixed size
+    codec->setFast(true);
+{% endif %}
+
+
 {% if (fn.isReturnValue || fn.isSendValue) && generateErrorChecks %}
 {%  set serverIndent = "    " >%}
     err = codec->getStatus();

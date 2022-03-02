@@ -28,14 +28,27 @@ const uint8_t BasicCodec::kBasicCodecVersion = 1;
 
 void BasicCodec::startWriteMessage(message_type_t type, uint32_t service, const Hash request, uint32_t /*sequence*/)
 {
-    PayloadHeader header(kBasicCodecVersion, 
-        static_cast<uint8_t>((service & 0xff)),
-        request,
-        type 
-    );
+    /// do this only if we dont have a fast mssage coded
+    if(!getFast())
+    {
+        PayloadHeader header(kBasicCodecVersion, 
+            static_cast<uint8_t>((service & 0xff)),
+            request,
+            type 
+        );
 
-    writeData(&header, sizeof(PayloadHeader));
-    // write(sequence);
+        writeData(&header, sizeof(PayloadHeader));
+        // write(sequence);
+    }
+    else{
+        /// if this is a fast message codec, we dont expect an 
+        /// extra header inside the payload
+        /// all we need to write is the service id
+        (void) type;
+        (void) request;
+        uint8_t serviceId = static_cast<uint8_t>((service & 0xff));
+        writeData(&serviceId, sizeof(uint8_t));
+    }
 }
 
 void BasicCodec::writeData(const void *value, uint32_t length)
@@ -184,24 +197,36 @@ void BasicCodec::writeCallback(funPtr callback1, funPtr callback2)
 
 void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Hash* request, uint32_t* /*sequence*/)
 {
-    PayloadHeader header;
-    readData(&header, sizeof(PayloadHeader));
+    /// only do this when we do not expect a fast message
+    if(!getFast()){
+        PayloadHeader header;
+        readData(&header, sizeof(PayloadHeader));
 
-    if (header.codecVersion != kBasicCodecVersion)
-    {
-        updateStatus(kErpcStatus_InvalidMessageVersion);
+        if (header.codecVersion != kBasicCodecVersion)
+        {
+            updateStatus(kErpcStatus_InvalidMessageVersion);
+        }
+
+        if (!m_status)
+        {
+            *service = header.service;
+            // std::memcpy(request, header.id, sizeof(Hash));
+            *request = header.id;
+            *type = static_cast<message_type_t>(header.type);
+
+            // read(sequence);
+        }
     }
-
-    if (!m_status)
-    {
-        *service = header.service;
-        // std::memcpy(request, header.id, sizeof(Hash));
-        *request = header.id;
-        *type = static_cast<message_type_t>(header.type);
-
-        // read(sequence);
+    else{
+        /// if this is a fast message codec, we dont expect 
+        /// an extra header inside the payload, just read the
+        /// service id
+        (void) type;
+        (void) request;
+        uint8_t serviceId;
+        readData(&serviceId, sizeof(uint8_t));
+        *service = serviceId;
     }
-
 }
 
 void BasicCodec::readData(void *value, uint32_t length)
