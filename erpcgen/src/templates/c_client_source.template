@@ -151,7 +151,12 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
     {$clientIndent}    // Codec status is checked inside this function.
     {$clientIndent}    bool success = g_client->performRequest(pendingRequest_);
     {$clientIndent}    err = codec->getStatus();
-    {$clientIndent}    if(success && pendingRequest_.getState() == RequestContextState::DONE)
+    {$clientIndent}    if(!success && err != kErpcStatus_Success && err != kErpcStatus_Pending)
+    {$clientIndent}    {
+    {$clientIndent}         /// we are done with error :(
+    {$clientIndent}         pendingRequest_.setState(RequestContextState::DONE);
+    {$clientIndent}    }
+    {$clientIndent}    else if(success && pendingRequest_.getState() == RequestContextState::DONE)
     {$clientIndent}    {
     {%  set clientIndent = "        " >%}
     {% if fn.isReturnValue %}

@@ -48,7 +48,7 @@ erpc_status_t FastTransport::receive(const Hash& channel, MessageBuffer *message
     FastFrame frame; 
 
     // Receive a single FastFrame
-    ret = underlyingReceive(channel, (uint8_t *)&frame, sizeof(FastFrame));
+    ret = underlyingReceive(channel, (uint8_t *)message->get(), sizeof(FastFrame));
     if (ret == kErpcStatus_Success)
     {
         // We do not verify CRC.
@@ -57,9 +57,9 @@ erpc_status_t FastTransport::receive(const Hash& channel, MessageBuffer *message
         // {
         //     ret = kErpcStatus_CrcCheckFailed;
         // }
-        
+       
         /// and set message buffer length to used and continue with receive = succes
-        message->setUsed(static_cast<uint16_t>(frame.messageSize));
+        message->setUsed(sizeof(FastFrame));
     }
     else if (ret == kErpcStatus_Pending){
         /// do nothing
@@ -77,13 +77,17 @@ erpc_status_t FastTransport::send(const Hash& channel, MessageBuffer *message)
     FastFrame frame;
 
     /// message data should not exceed our fast frame
-    assert(messageLength > sizeof(frame.payload));
+    if(messageLength > sizeof(FastFrame)){
+        return kErpcStatus_BufferOverrun;
+    }
+
 
     /// copy message buffer data into frame,
     /// if there are more then 6 bytes in messagebuffer, the rest
     /// will be CUT OFF
+    message->read(0, &frame.serviceId, sizeof(uint8_t));
     frame.messageSize = static_cast<uint8_t>(messageLength);
-    std::memcpy(frame.payload, message->get(), sizeof(frame.payload));
+    message->read(1, &frame.payload, FastFrame::PAYLOAD_SIZE);
     uint8_t* bytePtr = reinterpret_cast<uint8_t*>(&frame);
 
     /// calculate new buffer sending address
@@ -100,6 +104,7 @@ erpc_status_t FastTransport::send(const Hash& channel, MessageBuffer *message)
     }
     else if (sendBytes == std::numeric_limits<uint32_t>::max()) 
     {
+
         ret = kErpcStatus_SendFailed;
         this->sentBytesInBuffer_ = 0;
     }

@@ -40,7 +40,8 @@ typedef enum _message_type
     kInvocationMessage = 0,
     kOnewayMessage,
     kReplyMessage,
-    kNotificationMessage
+    kNotificationMessage,
+    kFastMessage
 } message_type_t;
 
 typedef void *funPtr;          // Pointer to functions

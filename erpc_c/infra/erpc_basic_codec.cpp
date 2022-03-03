@@ -22,7 +22,6 @@
 
 using namespace erpc;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Code
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,7 +49,7 @@ void BasicCodec::startWriteMessage(message_type_t type, uint32_t service, const 
         (void) type;
         (void) request;
         uint8_t serviceId = static_cast<uint8_t>((service & 0xff));
-        writeData(&serviceId, sizeof(uint8_t));
+        write(serviceId);
     }
 }
 
@@ -224,11 +223,13 @@ void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Hash*
         /// if this is a fast message codec, we dont expect 
         /// an extra header inside the payload, just read the
         /// service id
-        (void) type;
         (void) request;
         uint8_t serviceId;
-        readData(&serviceId, sizeof(uint8_t));
-        *service = serviceId;
+        read(&serviceId);
+        *service = static_cast<uint32_t>(serviceId); 
+        uint8_t messageSize;
+        read(&messageSize);
+        *type = kFastMessage;
     }
 }
 
