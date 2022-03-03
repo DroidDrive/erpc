@@ -37,9 +37,8 @@ namespace erpc {
 
 /*! @brief Contents of the header that prefixes each message. */
 struct FastFrame{
-    static constexpr size_t PAYLOAD_SIZE = 6; //bytes
+    static constexpr size_t PAYLOAD_SIZE = 7; //bytes
     uint8_t serviceId;
-    uint8_t messageSize;
     uint8_t payload[PAYLOAD_SIZE] = {0};
 };
 

@@ -227,8 +227,6 @@ void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Hash*
         uint8_t serviceId;
         read(&serviceId);
         *service = static_cast<uint32_t>(serviceId); 
-        uint8_t messageSize;
-        read(&messageSize);
         *type = kFastMessage;
     }
 }

@@ -86,7 +86,6 @@ erpc_status_t FastTransport::send(const Hash& channel, MessageBuffer *message)
     /// if there are more then 6 bytes in messagebuffer, the rest
     /// will be CUT OFF
     message->read(0, &frame.serviceId, sizeof(uint8_t));
-    frame.messageSize = static_cast<uint8_t>(messageLength);
     message->read(1, &frame.payload, FastFrame::PAYLOAD_SIZE);
     uint8_t* bytePtr = reinterpret_cast<uint8_t*>(&frame);
 
