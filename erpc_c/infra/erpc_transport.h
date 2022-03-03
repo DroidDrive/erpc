@@ -28,6 +28,9 @@
 
 namespace erpc {
 
+/// forward declaration Codec
+class Codec; 
+
 /*!
  * @brief Abstract interface for transport layer.
  *
@@ -55,7 +58,7 @@ public:
      *
      * @return based on receive implementation.
      */
-    virtual erpc_status_t receive(const erpc::Hash& channel, MessageBuffer *message, bool skipCrc = false) = 0;
+    virtual erpc_status_t receive(const erpc::Hash& channel, MessageBuffer *message) = 0;
 
     /*!
      * @brief Prototype for send message.
@@ -87,6 +90,10 @@ public:
     virtual void setCrc16(Crc16 *crcImpl) { (void)crcImpl; }
 
     virtual void flush() = 0;
+
+    /// this function is called when a codec was created, so this transport can
+    /// change the codecs underlying behavor in some way
+    virtual void codecCreationCallback(Codec* /*codec*/){ }
 };
 
 /*!

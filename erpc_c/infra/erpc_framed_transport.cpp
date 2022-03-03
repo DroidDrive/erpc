@@ -40,7 +40,7 @@ void FramedTransport::setCrc16(Crc16 *crcImpl)
     m_crcImpl = crcImpl;
 }
 
-erpc_status_t FramedTransport::receive(const Hash& channel, MessageBuffer *message, bool skipCrc)
+erpc_status_t FramedTransport::receive(const Hash& channel, MessageBuffer *message)
 {
     assert(m_crcImpl && "Uninitialized Crc16 object.");
 
@@ -94,7 +94,7 @@ erpc_status_t FramedTransport::receive(const Hash& channel, MessageBuffer *messa
         {
             // Verify CRC.
             uint16_t computedCrc = m_crcImpl->computeCRC16(message->get(), headerBuffer_.m_messageSize);
-            if (!skipCrc && (computedCrc != headerBuffer_.m_crc))
+            if (computedCrc != headerBuffer_.m_crc)
             {
                 ret = kErpcStatus_CrcCheckFailed;
             }

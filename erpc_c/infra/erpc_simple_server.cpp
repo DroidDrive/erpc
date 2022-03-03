@@ -102,7 +102,7 @@ erpc_status_t SimpleServer::runInternalBegin(Codec **codec, MessageBuffer &buff,
 
     if(m_state == State::RECEIVE)
     {
-        err = m_transport->receive(methodId, &buff, (*codec)->getSkipCrc());
+        err = m_transport->receive(methodId, &buff);
         // Receive the next invocation request.
         if (err == kErpcStatus_Success)
         {
@@ -118,7 +118,10 @@ erpc_status_t SimpleServer::runInternalBegin(Codec **codec, MessageBuffer &buff,
 #if ERPC_MESSAGE_LOGGING
             err = logMessage(&buff);
 #endif       
-            *codec = m_codecFactory->create();
+            /// codec factory can now get a reference to a transport, so that
+            /// the transport can influence it's underlying codec
+            /// for example: change behavior of the startRead/Write-Message() impl
+            *codec = m_codecFactory->create(m_transport);
             if (*codec == NULL)
             {
                 err = kErpcStatus_MemoryError;

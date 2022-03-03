@@ -383,7 +383,8 @@ public:
      *
      * @return Pointer to created codec.
      */
-    virtual Codec *create(void) override;
+    virtual Codec *create() override;
+    virtual Codec *create(Transport* transport) override;
 
     /*!
      * @brief Dispose codec.

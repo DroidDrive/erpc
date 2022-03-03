@@ -72,7 +72,7 @@ public:
      * @retval kErpcStatus_CrcCheckFailed When receiving failed.
      * @retval other Subclass may return other errors from the underlyingReceive() method.
      */
-    virtual erpc_status_t receive(const Hash& channel, MessageBuffer *message, bool skipCrc = false) override;
+    virtual erpc_status_t receive(const Hash& channel, MessageBuffer *message) override;
 
     /*!
      * @brief Function to send prepared message.
@@ -120,6 +120,10 @@ protected:
      * @retval kErpcStatus_Fail When reading data ends with error.
      */
     virtual erpc_status_t underlyingReceive(const erpc::Hash& channel, uint8_t *data, uint32_t size) = 0;
+
+    /// this function is called when a codec was created, so this transport can
+    /// change the codecs underlying behavor in some way
+    virtual void codecCreationCallback(Codec* codec);
 
 private:
     uint32_t sentBytesInBuffer_ = 0;

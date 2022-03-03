@@ -11,6 +11,9 @@
 #include "erpc_fast_transport.h"
 #include "erpc_message_buffer.h"
 
+/// for resolving the forward declaration of Codec in erpc_transport.h
+#include "erpc_basic_codec.h"
+
 #include <cassert>
 #include <cstdio>
 
@@ -39,7 +42,7 @@ void FastTransport::setCrc16(Crc16 */*crcImpl*/)
     /// we dont have a crc to set 
 }
 
-erpc_status_t FastTransport::receive(const Hash& channel, MessageBuffer *message, bool skipCrc)
+erpc_status_t FastTransport::receive(const Hash& channel, MessageBuffer *message)
 {
     erpc_status_t ret = kErpcStatus_Fail;
     FastFrame frame; 
@@ -50,7 +53,7 @@ erpc_status_t FastTransport::receive(const Hash& channel, MessageBuffer *message
     {
         // We do not verify CRC.
         // uint16_t computedCrc = m_crcImpl->computeCRC16(message->get(), headerBuffer_.m_messageSize);
-        // if (!skipCrc && (computedCrc != headerBuffer_.m_crc))
+        // if (computedCrc != headerBuffer_.m_crc)
         // {
         //     ret = kErpcStatus_CrcCheckFailed;
         // }
@@ -105,4 +108,8 @@ erpc_status_t FastTransport::send(const Hash& channel, MessageBuffer *message)
     }
   
     return ret;
+}
+
+void FastTransport::codecCreationCallback(Codec* codec){
+    codec->setFast(true);
 }

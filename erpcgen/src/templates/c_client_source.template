@@ -102,16 +102,25 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
     }
     else
     {
-        {% if fn.skipCrcCheck %}
-        /// skip crc check, because the message is not really important and can fail
-        codec->setSkipCrc(true);
-        {% endif %}
-
-        {% if fn.isFast %}
+        /// do we want to sip crc check?
+        codec->setSkipCrc({$fn.skipCrcCheck});
+        
         /// this is a special frame, which is small and fixed size
-        codec->setFast(true);
-        {% endif %}
+        static constexpr bool thisIsAFastFrame = {$fn.isFast};
 
+        /// check wether or not our codec is correctly configured 
+        /// (by either the server/client or transport layer)
+        /// codec is ok if we are 
+        ///     a fast codec and want a fast frame or
+        ///     a normal codec and wamnt a norrmal frame 
+        /// (XNOR)
+        bool codecIsCorrect = codec->getFast() == thisIsAFastFrame;
+        if(!codecIsCorrect){
+            /// we are done (we do nothing and return a special error)!
+            pendingRequest_.setState(RequestContextState::DONE);
+            err = kErpcStatus_FastFrameCodecConfigurationError;
+        }
+        
         if(pendingRequest_.getState() == RequestContextState::VALID){
 {% endif -- generateErrorChecks %}
 {$clientIndent}    /// put stuff into sending buffers

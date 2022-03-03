@@ -94,7 +94,7 @@ public:
      * @retval kErpcStatus_CrcCheckFailed When receiving failed.
      * @retval other Subclass may return other errors from the underlyingReceive() method.
      */
-    virtual erpc_status_t receive(const Hash& channel, MessageBuffer *message, bool skipCrc = false) override;
+    virtual erpc_status_t receive(const Hash& channel, MessageBuffer *message) override;
 
     /*!
      * @brief Function to send prepared message.

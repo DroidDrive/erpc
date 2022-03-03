@@ -28,6 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace erpc {
+
+/// forward declaration Transport
+class Transport; 
+
 /*!
  * @brief Types of messages that can be encoded.
  */
@@ -476,7 +480,8 @@ public:
      *
      * @return Pointer to created codec.
      */
-    virtual Codec *create(void) = 0;
+    virtual Codec *create() = 0;
+    virtual Codec *create(Transport *transport) = 0;
 
     /*!
      * @brief Dispose codec.

@@ -10,6 +10,9 @@
 
 #include "erpc_basic_codec.h"
 
+/// for resolving the forward declaration of Transport in erpc_codec.h
+#include "erpc_transport.h"
+
 #include "erpc_manually_constructed.h"
 
 #if ERPC_ALLOCATION_POLICY == ERPC_ALLOCATION_POLICY_DYNAMIC
@@ -411,6 +414,20 @@ ERPC_MANUALLY_CONSTRUCTED_ARRAY_STATIC(BasicCodec, s_basicCodecManual, ERPC_CODE
 Codec *BasicCodecFactory ::create()
 {
     ERPC_CREATE_NEW_OBJECT(BasicCodec, s_basicCodecManual, ERPC_CODEC_COUNT)
+}
+
+Codec *BasicCodecFactory ::create(Transport* underlyingTransportPtr)
+{
+    Codec* codec = create();
+    /// notify the transport, that this codec was created
+    /// the transport can now change some things around inside the codec if necessary
+    /// by default, the code is fine
+    /// but The FastFrame Transport needs to change the startReadMessage & startWriteMessage
+    /// behavior to cut down frame size and bus load
+    if(underlyingTransportPtr != nullptr){
+        underlyingTransportPtr->codecCreationCallback(codec);
+    }
+    return codec;
 }
 
 void BasicCodecFactory ::dispose(Codec *codec)

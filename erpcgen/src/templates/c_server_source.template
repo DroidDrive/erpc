@@ -111,11 +111,20 @@ ERPC_MANUALLY_CONSTRUCTED_STATIC({$iface.serviceClassName}, s_{$iface.serviceCla
 {%  endif -- shared %}
 {% endfor -- param %}
 
-{% if fn.isFast %}
     /// this is a special frame, which is small and fixed size
-    codec->setFast(true);
-{% endif %}
+    static constexpr bool thisIsAFastFrame = {$fn.isFast};
 
+    /// check wether or not our codec is correctly configured 
+    /// (by either the server/client or transport layer)
+    /// codec is ok if we are 
+    ///     a fast codec and want a fast frame or
+    ///     a normal codec and wamnt a norrmal frame 
+    /// (XNOR)
+    bool codecIsCorrect = codec->getFast() == thisIsAFastFrame;
+    if(!codecIsCorrect){
+        /// we are done (we do nothing and return a special error)!
+        return kErpcStatus_FastFrameCodecConfigurationError;
+    }
 
 {% if (fn.isReturnValue || fn.isSendValue) && generateErrorChecks %}
 {%  set serverIndent = "    " >%}
