@@ -68,7 +68,7 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
     {% if fn.returnValue.isNullReturnType %} 
         {$fn.returnValue.resultVariable} = &retObj{$fn.name}.value;
     {% else %}
-        {$fn.returnValue.resultVariable};
+        {$fn.returnValue.resultVariable}{};
     {% endif -- isNullReturnType %}
 {% endif -- isNotVoid %}
 
