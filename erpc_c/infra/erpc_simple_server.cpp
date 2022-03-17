@@ -172,7 +172,7 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
     if(m_state == State::PROCESS_DONE)
     {
         m_state = State::SEND;
-        if (msgType != kOnewayMessage && msgType != kFastMessage)
+        if (msgType != kOnewayMessage && msgType != kFastOnewayMessage)
         {
 #if ERPC_MESSAGE_LOGGING
             err = logMessage(codec->getBuffer());

@@ -120,7 +120,9 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
             pendingRequest_.setState(RequestContextState::DONE);
             err = kErpcStatus_FastFrameCodecConfigurationError;
         }
-        
+
+        codec->setOneway(!{$fn.isReturnValue});
+
         if(pendingRequest_.getState() == RequestContextState::VALID){
 {% endif -- generateErrorChecks %}
 {$clientIndent}    /// put stuff into sending buffers

@@ -41,7 +41,8 @@ typedef enum _message_type
     kOnewayMessage,
     kReplyMessage,
     kNotificationMessage,
-    kFastMessage
+    kFastMessage,
+    kFastOnewayMessage
 } message_type_t;
 
 typedef void *funPtr;          // Pointer to functions
@@ -145,7 +146,10 @@ public:
     
     void setFast(bool fast){ fastMessage_ = fast; }
     bool getFast(){ return fastMessage_; }
-    
+
+    void setOneway(bool ow){ oneway_ = ow; }
+    bool getOneway(){ return oneway_; }
+
     //! @name Encoding
     //@{
     /*!
@@ -456,6 +460,7 @@ protected:
 
     bool skipCrc_ = false;
     bool fastMessage_ = false; 
+    bool oneway_ = false;
 };
 
 /*!

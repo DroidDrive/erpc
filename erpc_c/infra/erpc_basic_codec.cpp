@@ -49,6 +49,8 @@ void BasicCodec::startWriteMessage(message_type_t type, uint32_t service, const 
         (void) type;
         (void) request;
         uint8_t serviceId = static_cast<uint8_t>((service & 0xff));
+        /// set last bit of serviceId to oneway
+        serviceId |= getOneway() << 7;
         write(serviceId);
     }
 }
@@ -226,8 +228,17 @@ void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Hash*
         (void) request;
         uint8_t serviceId;
         read(&serviceId);
+        /// last bit of service id is used to identify oneway messages
+        bool isOneway = (serviceId) & (1<<(7)) == true;
+        /// set bit to 0
+        serviceId &= ~(1UL << 7);
+        if(isOneway){
+            *type = kFastOnewayMessage;
+        }
+        else{
+            *type = kFastMessage;
+        }
         *service = static_cast<uint32_t>(serviceId); 
-        *type = kFastMessage;
     }
 }
 

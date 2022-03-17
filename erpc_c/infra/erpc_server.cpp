@@ -81,7 +81,7 @@ erpc_status_t Server::processMessage(Codec *codec, message_type_t msgType, uint3
     erpc_status_t err = kErpcStatus_Success;
     Service *service;
 
-    if ((msgType != kInvocationMessage) && (msgType != kOnewayMessage) && (msgType != kFastMessage))
+    if ((msgType != kInvocationMessage) && (msgType != kOnewayMessage) && (msgType != kFastMessage) && (msgType != kFastOnewayMessage))
     {
         err = kErpcStatus_InvalidArgument;
     }
