@@ -85,6 +85,7 @@ async           { return TOK_ASYNC; }
 oneway          { return TOK_ONEWAY; }
 skipCrc         { return TOK_SKIP_CRC; }
 fast            { return TOK_FAST; }
+fastOneway      { return TOK_FAST_ONEWAY; }
 list            { return TOK_LIST; }
 ref             { return TOK_REF; }
 true            { return TOK_TRUE; }
