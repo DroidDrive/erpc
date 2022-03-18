@@ -178,11 +178,12 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
         }
         else{
             err = m_transport->send(methodId, codec->getBuffer());
-            if(err == kErpcStatus_Success){
-                m_state = State::SEND_DONE;
-                // Dispose of buffers and codecs.
-                disposeBufferAndCodec(codec);
-            }
+        }
+
+        if(err == kErpcStatus_Success){
+            m_state = State::SEND_DONE;
+            // Dispose of buffers and codecs.
+            disposeBufferAndCodec(codec);
         }
 
 #if ERPC_PRE_POST_ACTION
