@@ -19,6 +19,7 @@
 #include <new>
 #endif
 #include <cassert>
+#include <bitset>
 
 using namespace erpc;
 
@@ -49,9 +50,13 @@ void BasicCodec::startWriteMessage(message_type_t type, uint32_t service, const 
         (void) type;
         (void) request;
         uint8_t serviceId = static_cast<uint8_t>((service & 0xff));
+
+        std::bitset<sizeof(decltype(serviceId))*8> bitset{serviceId};
         /// set last bit of serviceId to oneway
-        serviceId |= getOneway() << 7;
-        write(serviceId);
+        if(getOneway()){
+            bitset.set(7);
+        }
+        write(static_cast<decltype(serviceId)>(bitset.to_ulong()));
     }
 }
 
@@ -229,16 +234,17 @@ void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Hash*
         uint8_t serviceId;
         read(&serviceId);
         /// last bit of service id is used to identify oneway messages
-        bool isOneway = (serviceId) & (1<<(7)) == true;
+        std::bitset<sizeof(decltype(serviceId))*8> bitset{serviceId};
+        bool isOneway = bitset.test(7);
         /// set bit to 0
-        serviceId &= ~(1UL << 7);
+        bitset.reset(7);
         if(isOneway){
             *type = kFastOnewayMessage;
         }
         else{
             *type = kFastMessage;
         }
-        *service = static_cast<uint32_t>(serviceId); 
+        *service = static_cast<uint32_t>(bitset.to_ulong());
     }
 }
 

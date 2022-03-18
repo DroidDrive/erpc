@@ -172,17 +172,17 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
     if(m_state == State::PROCESS_DONE)
     {
         m_state = State::SEND;
-        if (msgType != kOnewayMessage && msgType != kFastOnewayMessage)
-        {
-#if ERPC_MESSAGE_LOGGING
-            err = logMessage(codec->getBuffer());
-            if (err == kErpcStatus_Success)
-            {
-#endif
-                err = m_transport->send(methodId, codec->getBuffer());
-#if ERPC_MESSAGE_LOGGING
+        if (msgType == kOnewayMessage || msgType == kFastOnewayMessage){
+            // we dont send a response
+            m_state = State::SEND_DONE;
+        }
+        else{
+            err = m_transport->send(methodId, codec->getBuffer());
+            if(err == kErpcStatus_Success){
+                m_state = State::SEND_DONE;
+                // Dispose of buffers and codecs.
+                disposeBufferAndCodec(codec);
             }
-#endif
         }
 
 #if ERPC_PRE_POST_ACTION
@@ -192,13 +192,8 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
             postCB();
         }
 #endif
-        if(err == kErpcStatus_Success){
-            m_state = State::SEND_DONE;
-              // Dispose of buffers and codecs.
-            disposeBufferAndCodec(codec);
-        }
     }
-
+    
     return err;
 }
 
