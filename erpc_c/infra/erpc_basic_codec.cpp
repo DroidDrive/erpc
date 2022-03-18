@@ -10,15 +10,18 @@
 
 #include "erpc_basic_codec.h"
 
+/// for resolving the forward declaration of Transport in erpc_codec.h
+#include "erpc_transport.h"
+
 #include "erpc_manually_constructed.h"
 
 #if ERPC_ALLOCATION_POLICY == ERPC_ALLOCATION_POLICY_DYNAMIC
 #include <new>
 #endif
 #include <cassert>
+#include <bitset>
 
 using namespace erpc;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Code
@@ -28,14 +31,33 @@ const uint8_t BasicCodec::kBasicCodecVersion = 1;
 
 void BasicCodec::startWriteMessage(message_type_t type, uint32_t service, const Hash request, uint32_t /*sequence*/)
 {
-    PayloadHeader header(kBasicCodecVersion, 
-        static_cast<uint8_t>((service & 0xff)),
-        request,
-        type 
-    );
+    /// do this only if we dont have a fast mssage coded
+    if(!getFast())
+    {
+        PayloadHeader header(kBasicCodecVersion, 
+            static_cast<uint8_t>((service & 0xff)),
+            request,
+            type 
+        );
 
-    writeData(&header, sizeof(PayloadHeader));
-    // write(sequence);
+        writeData(&header, sizeof(PayloadHeader));
+        // write(sequence);
+    }
+    else{
+        /// if this is a fast message codec, we dont expect an 
+        /// extra header inside the payload
+        /// all we need to write is the service id
+        (void) type;
+        (void) request;
+        uint8_t serviceId = static_cast<uint8_t>((service & 0xff));
+
+        std::bitset<sizeof(decltype(serviceId))*8> bitset{serviceId};
+        /// set last bit of serviceId to oneway
+        if(getOneway()){
+            bitset.set(7);
+        }
+        write(static_cast<decltype(serviceId)>(bitset.to_ulong()));
+    }
 }
 
 void BasicCodec::writeData(const void *value, uint32_t length)
@@ -184,24 +206,46 @@ void BasicCodec::writeCallback(funPtr callback1, funPtr callback2)
 
 void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Hash* request, uint32_t* /*sequence*/)
 {
-    PayloadHeader header;
-    readData(&header, sizeof(PayloadHeader));
+    /// only do this when we do not expect a fast message
+    if(!getFast()){
+        PayloadHeader header;
+        readData(&header, sizeof(PayloadHeader));
 
-    if (header.codecVersion != kBasicCodecVersion)
-    {
-        updateStatus(kErpcStatus_InvalidMessageVersion);
+        if (header.codecVersion != kBasicCodecVersion)
+        {
+            updateStatus(kErpcStatus_InvalidMessageVersion);
+        }
+
+        if (!m_status)
+        {
+            *service = header.service;
+            // std::memcpy(request, header.id, sizeof(Hash));
+            *request = header.id;
+            *type = static_cast<message_type_t>(header.type);
+
+            // read(sequence);
+        }
     }
-
-    if (!m_status)
-    {
-        *service = header.service;
-        // std::memcpy(request, header.id, sizeof(Hash));
-        *request = header.id;
-        *type = static_cast<message_type_t>(header.type);
-
-        // read(sequence);
+    else{
+        /// if this is a fast message codec, we dont expect 
+        /// an extra header inside the payload, just read the
+        /// service id
+        (void) request;
+        uint8_t serviceId;
+        read(&serviceId);
+        /// last bit of service id is used to identify oneway messages
+        std::bitset<sizeof(decltype(serviceId))*8> bitset{serviceId};
+        bool isOneway = bitset.test(7);
+        /// set bit to 0
+        bitset.reset(7);
+        if(isOneway){
+            *type = kFastOnewayMessage;
+        }
+        else{
+            *type = kFastMessage;
+        }
+        *service = static_cast<uint32_t>(bitset.to_ulong());
     }
-
 }
 
 void BasicCodec::readData(void *value, uint32_t length)
@@ -386,6 +430,20 @@ ERPC_MANUALLY_CONSTRUCTED_ARRAY_STATIC(BasicCodec, s_basicCodecManual, ERPC_CODE
 Codec *BasicCodecFactory ::create()
 {
     ERPC_CREATE_NEW_OBJECT(BasicCodec, s_basicCodecManual, ERPC_CODEC_COUNT)
+}
+
+Codec *BasicCodecFactory ::create(Transport* underlyingTransportPtr)
+{
+    Codec* codec = create();
+    /// notify the transport, that this codec was created
+    /// the transport can now change some things around inside the codec if necessary
+    /// by default, the code is fine
+    /// but The FastFrame Transport needs to change the startReadMessage & startWriteMessage
+    /// behavior to cut down frame size and bus load
+    if(underlyingTransportPtr != nullptr){
+        underlyingTransportPtr->codecCreationCallback(codec);
+    }
+    return codec;
 }
 
 void BasicCodecFactory ::dispose(Codec *codec)

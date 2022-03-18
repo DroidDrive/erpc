@@ -68,7 +68,7 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
     {% if fn.returnValue.isNullReturnType %} 
         {$fn.returnValue.resultVariable} = &retObj{$fn.name}.value;
     {% else %}
-        {$fn.returnValue.resultVariable};
+        {$fn.returnValue.resultVariable}{};
     {% endif -- isNullReturnType %}
 {% endif -- isNotVoid %}
 
@@ -102,11 +102,27 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
     }
     else
     {
-        {% if fn.skipCrcCheck %}
-        /// skip crc check, because the message is not really important and can fail
-        codec->setSkipCrc(true);
-        {% endif %}
-  
+        /// do we want to sip crc check?
+        codec->setSkipCrc({$fn.skipCrcCheck});
+        
+        /// this is a special frame, which is small and fixed size
+        static constexpr bool thisIsAFastFrame = {$fn.isFast};
+
+        /// check wether or not our codec is correctly configured 
+        /// (by either the server/client or transport layer)
+        /// codec is ok if we are 
+        ///     a fast codec and want a fast frame or
+        ///     a normal codec and wamnt a norrmal frame 
+        /// (XNOR)
+        bool codecIsCorrect = codec->getFast() == thisIsAFastFrame;
+        if(!codecIsCorrect){
+            /// we are done (we do nothing and return a special error)!
+            pendingRequest_.setState(RequestContextState::DONE);
+            err = kErpcStatus_FastFrameCodecConfigurationError;
+        }
+
+        codec->setOneway(!{$fn.isReturnValue});
+
         if(pendingRequest_.getState() == RequestContextState::VALID){
 {% endif -- generateErrorChecks %}
 {$clientIndent}    /// put stuff into sending buffers
@@ -137,7 +153,12 @@ static {$fn.genericRetStruct}_t retObj{$fn.name} = { false {% if fn.ret != "void
     {$clientIndent}    // Codec status is checked inside this function.
     {$clientIndent}    bool success = g_client->performRequest(pendingRequest_);
     {$clientIndent}    err = codec->getStatus();
-    {$clientIndent}    if(success && pendingRequest_.getState() == RequestContextState::DONE)
+    {$clientIndent}    if(!success && err != kErpcStatus_Success && err != kErpcStatus_Pending)
+    {$clientIndent}    {
+    {$clientIndent}         /// we are done with error :(
+    {$clientIndent}         pendingRequest_.setState(RequestContextState::DONE);
+    {$clientIndent}    }
+    {$clientIndent}    else if(success && pendingRequest_.getState() == RequestContextState::DONE)
     {$clientIndent}    {
     {%  set clientIndent = "        " >%}
     {% if fn.isReturnValue %}

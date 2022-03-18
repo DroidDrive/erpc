@@ -28,6 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace erpc {
+
+/// forward declaration Transport
+class Transport; 
+
 /*!
  * @brief Types of messages that can be encoded.
  */
@@ -36,7 +40,9 @@ typedef enum _message_type
     kInvocationMessage = 0,
     kOnewayMessage,
     kReplyMessage,
-    kNotificationMessage
+    kNotificationMessage,
+    kFastMessage,
+    kFastOnewayMessage
 } message_type_t;
 
 typedef void *funPtr;          // Pointer to functions
@@ -138,6 +144,12 @@ public:
     void setSkipCrc(bool skip){ skipCrc_ = skip; }
     bool getSkipCrc(){ return skipCrc_; }
     
+    void setFast(bool fast){ fastMessage_ = fast; }
+    bool getFast(){ return fastMessage_; }
+
+    void setOneway(bool ow){ oneway_ = ow; }
+    bool getOneway(){ return oneway_; }
+
     //! @name Encoding
     //@{
     /*!
@@ -446,8 +458,9 @@ protected:
     MessageBuffer::Cursor m_cursor; /*!< Copy data to message buffers. */
     erpc_status_t m_status;         /*!< Status of serialized data. */
 
-private:
     bool skipCrc_ = false;
+    bool fastMessage_ = false; 
+    bool oneway_ = false;
 };
 
 /*!
@@ -473,7 +486,8 @@ public:
      *
      * @return Pointer to created codec.
      */
-    virtual Codec *create(void) = 0;
+    virtual Codec *create() = 0;
+    virtual Codec *create(Transport *transport) = 0;
 
     /*!
      * @brief Dispose codec.

@@ -147,7 +147,9 @@ token_loc_t mergeLocation(const token_loc_t & l1, const token_loc_t & l2);
 %token <m_token> TOK_INOUT        "inout"
 %token <m_token> TOK_ASYNC        "async"
 %token <m_token> TOK_ONEWAY       "oneway"
-%token <m_token> TOK_SKIP_CRC       "skipCrc"
+%token <m_token> TOK_SKIP_CRC     "skipCrc"
+%token <m_token> TOK_FAST         "fast"
+%token <m_token> TOK_FAST_ONEWAY  "fastOneway"
 %token <m_token> TOK_LIST         "list"
 %token <m_token> TOK_REF          "ref"
 %token <m_token> TOK_TRUE         "true"
@@ -497,7 +499,7 @@ function_type_base_def
                         }
                 ;
 /*
- * TOK_FUNCTION -> ( ident ( simple_data_type | TOK_VOID | TOK_ONEWAY | TOK_SKIP_CRC) ( TOK_CHILDREN -> param_def* ) ( TOK_CHILDREN -> TOK_ANNOTATION* ) )
+ * TOK_FUNCTION -> ( ident ( simple_data_type | TOK_VOID | TOK_ONEWAY | TOK_SKIP_CRC | TOK_FAST | TOK_FAST_ONEWAY) ( TOK_CHILDREN -> param_def* ) ( TOK_CHILDREN -> TOK_ANNOTATION* ) )
  */
 function_type_def
                 :   ident[name] '(' param_list_opt[params] ')' TOK_ARROW function_return_type[return_type]
@@ -518,10 +520,43 @@ function_type_def
                             $$->appendChild($params);
 
                             /// append annotation to our function object
-                            const std::string skipCrcKey("skipCrcCheck");
+                            const std::string key("skipCrcCheck");
                             Value* val = new IntegerValue(1);
-                            $$->setAttribute(skipCrcKey, val);
+                            $$->setAttribute(key, val);
                         }
+
+                |    TOK_FAST[fast] ident[name] '(' param_list_opt[params] ')' TOK_ARROW function_return_type[return_type]
+                        {
+                            $$ = new AstNode(Token(TOK_FUNCTION, NULL, @name));
+                            $$->appendChild($name);
+                            $$->appendChild($return_type);
+                            $$->appendChild(NULL);  // function type null to recognize function and callback
+                            $$->appendChild($params);
+
+                            /// append annotation to our function object
+                            const std::string key("fast");
+                            Value* val = new IntegerValue(1);
+                            $$->setAttribute(key, val);
+                        }
+                        
+                |    TOK_FAST_ONEWAY[fastOneway] ident[name] '(' param_list_opt[params] ')'
+                    {
+                        $$ = new AstNode(Token(TOK_FUNCTION, NULL, @name));
+                        $$->appendChild($name);
+
+                        /// do the same stuff, 'oneway' does
+                        AstNode * returnAst = new AstNode(Token(TOK_RETURN));
+                        returnAst->appendChild(new AstNode(Token(TOK_ONEWAY)));
+                        returnAst->appendChild(NULL);
+                        $$->appendChild(returnAst);
+                        $$->appendChild(NULL);  // function type null to recognize function and callback
+                        $$->appendChild($params);
+
+                        /// append annotation to our function object
+                        const std::string key("fast");
+                        Value* val = new IntegerValue(1);
+                        $$->setAttribute(key, val);
+                    }
 
                 |    TOK_ONEWAY[oneway] ident[name] '(' param_list_opt_in[params] ')'
                         {

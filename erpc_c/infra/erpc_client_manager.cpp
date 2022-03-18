@@ -213,7 +213,7 @@ void ClientManager::verifyReply(RequestContext &request)
 
 Codec *ClientManager::createBufferAndCodec(void)
 {
-    Codec *codec = m_codecFactory->create();
+    Codec *codec = m_codecFactory->create(m_transport);
     MessageBuffer message;
 
     if (codec != NULL)

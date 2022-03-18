@@ -8,8 +8,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#ifndef _EMBEDDED_RPC__FRAMED_TRANSPORT_H_
-#define _EMBEDDED_RPC__FRAMED_TRANSPORT_H_
+#ifndef _EMBEDDED_RPC__FAST_TRANSPORT_H_
+#define _EMBEDDED_RPC__FAST_TRANSPORT_H_
 
 #include "erpc_config_internal.h"
 #include "erpc_message_buffer.h"
@@ -36,46 +36,24 @@ namespace erpc {
 
 
 /*! @brief Contents of the header that prefixes each message. */
-struct Header
-{
-    uint16_t m_messageSize; //!< Size in bytes of the message, excluding the header.
-    uint16_t m_messageSize2; // redundant message size
-    uint16_t m_messageSize3; // redundant message size
-    uint16_t m_crc;         //!< CRC-16 over the message data.
+struct FastFrame{
+    static constexpr size_t PAYLOAD_SIZE = 7; //bytes
+    uint8_t serviceId;
+    uint8_t payload[PAYLOAD_SIZE] = {0};
 };
 
-/*!
- * @brief Base class for framed transport layers.
- *
- * This class adds simple framing to the data transmitted and received on the
- * communications channel. This allows the transport to perform reads and writes
- * of a size known in advance. Subclasses must implement the underlyingSend() and
- * underlyingReceive() methods to actually transmit and receive data.
- *
- * Frames have a maximum size of 64kB, as a 16-bit frame size is used.
- *
- * @note This implementation currently assumes both sides of the communications channel
- *  are the same endianness.
- *
- * The frame header includes a CRC-16 over the data for integrity checking. This class
- * includes a default CRC-16 implementation that is optimized for code size, but is
- * relatively slow. If a faster implementation is desired, you can pass the new CRC
- * function to setCRCFunction().
- *
- * @ingroup infra_transport
- */
-class FramedTransport : public Transport
+class FastTransport : public Transport
 {
 public:
     /*!
      * @brief Constructor.
      */
-    FramedTransport(void);
+    FastTransport(void);
 
     /*!
      * @brief Codec destructor
      */
-    virtual ~FramedTransport(void);
+    virtual ~FastTransport(void);
 
     /*!
      * @brief Receives an entire message.
@@ -143,10 +121,11 @@ protected:
      */
     virtual erpc_status_t underlyingReceive(const erpc::Hash& channel, uint8_t *data, uint32_t size) = 0;
 
+    /// this function is called when a codec was created, so this transport can
+    /// change the codecs underlying behavor in some way
+    virtual void codecCreationCallback(Codec* codec);
+
 private:
-    Header headerBuffer_;
-    bool headerReceived_ = false;
-    bool headerSend_ = false;
     uint32_t sentBytesInBuffer_ = 0;
 };
 

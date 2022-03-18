@@ -1127,9 +1127,15 @@ AstNode *SymbolScanner::handleFunction(AstNode *node, top_down)
 
 
     // Get special tokens at the end.
-    const std::string specialAnnotationsKey("skipCrcCheck");
-    if((*node).hasAttribute(specialAnnotationsKey)){
+    const std::string specialAnnotationsKeySkip("skipCrcCheck");
+    if((*node).hasAttribute(specialAnnotationsKeySkip)){
         func->setSkipCrcCheck(true);
+    }
+
+    // Get special tokens at the end.
+    const std::string specialAnnotationsKeyFast("fast");
+    if((*node).hasAttribute(specialAnnotationsKeyFast)){
+        func->setIsFast(true);
     }
 
     return nullptr;

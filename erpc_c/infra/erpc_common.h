@@ -87,7 +87,10 @@ enum _erpc_status
     kErpcStatus_BadAddressScale,
 
     //! Receive (or send) is pending, yield
-    kErpcStatus_Pending
+    kErpcStatus_Pending,
+
+    //! When using a codec that should be fast but isnt or the other way around
+    kErpcStatus_FastFrameCodecConfigurationError
 };
 
 /*! @brief Type used for all status and error return values. */

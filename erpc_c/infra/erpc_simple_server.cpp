@@ -102,7 +102,7 @@ erpc_status_t SimpleServer::runInternalBegin(Codec **codec, MessageBuffer &buff,
 
     if(m_state == State::RECEIVE)
     {
-        err = m_transport->receive(methodId, &buff, (*codec)->getSkipCrc());
+        err = m_transport->receive(methodId, &buff);
         // Receive the next invocation request.
         if (err == kErpcStatus_Success)
         {
@@ -118,7 +118,10 @@ erpc_status_t SimpleServer::runInternalBegin(Codec **codec, MessageBuffer &buff,
 #if ERPC_MESSAGE_LOGGING
             err = logMessage(&buff);
 #endif       
-            *codec = m_codecFactory->create();
+            /// codec factory can now get a reference to a transport, so that
+            /// the transport can influence it's underlying codec
+            /// for example: change behavior of the startRead/Write-Message() impl
+            *codec = m_codecFactory->create(m_transport);
             if (*codec == NULL)
             {
                 err = kErpcStatus_MemoryError;
@@ -169,17 +172,18 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
     if(m_state == State::PROCESS_DONE)
     {
         m_state = State::SEND;
-        if (msgType != kOnewayMessage)
-        {
-#if ERPC_MESSAGE_LOGGING
-            err = logMessage(codec->getBuffer());
-            if (err == kErpcStatus_Success)
-            {
-#endif
-                err = m_transport->send(methodId, codec->getBuffer());
-#if ERPC_MESSAGE_LOGGING
-            }
-#endif
+        if (msgType == kOnewayMessage || msgType == kFastOnewayMessage){
+            // we dont send a response
+            m_state = State::SEND_DONE;
+        }
+        else{
+            err = m_transport->send(methodId, codec->getBuffer());
+        }
+
+        if(err == kErpcStatus_Success){
+            m_state = State::SEND_DONE;
+            // Dispose of buffers and codecs.
+            disposeBufferAndCodec(codec);
         }
 
 #if ERPC_PRE_POST_ACTION
@@ -189,13 +193,8 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
             postCB();
         }
 #endif
-        if(err == kErpcStatus_Success){
-            m_state = State::SEND_DONE;
-              // Dispose of buffers and codecs.
-            disposeBufferAndCodec(codec);
-        }
     }
-
+    
     return err;
 }
 

@@ -1382,9 +1382,10 @@ data_map CGenerator::getFunctionBaseTemplateData(Group *group, FunctionBase *fn)
     // reset list numbering.
     listCounter = 0;
 
-    info["isOneway"] = fn->isOneway();
+    info["isOneway"] = fn->isOneway() || fn->isFast();
     info["isReturnValue"] = !fn->isOneway();
     info["skipCrcCheck"] = fn->getSkipCrcCheck();
+    info["isFast"] = fn->isFast();
     info["isSendValue"] = false;
     setTemplateComments(fnSymbol, info);
     info["needTempVariableServer"] = false;
@@ -1415,16 +1416,6 @@ data_map CGenerator::getFunctionBaseTemplateData(Group *group, FunctionBase *fn)
         else
         {
             returnInfo["isNullable"] = true;
-            returnInfo["nullableName"] = result;
-        }
-        if (findAnnotation(structMember, SKIP_CRC_ANNOTATION) == nullptr)
-        {
-            returnInfo["skipCrc"] = true;
-            returnInfo["nullableName"] = "";
-        }
-        else
-        {
-            returnInfo["skipCrc"] = false;
             returnInfo["nullableName"] = result;
         }
         bool isShared = (findAnnotation(structMember, SHARED_ANNOTATION) != nullptr);
