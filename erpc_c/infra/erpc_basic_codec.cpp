@@ -56,7 +56,7 @@ void BasicCodec::startWriteMessage(message_type_t type, uint32_t service, const 
         if(getOneway()){
             bitset.set(7);
         }
-        write(serviceId);
+        write(static_cast<decltype(serviceId)>(bitset.to_ulong()));
     }
 }
 
@@ -244,7 +244,7 @@ void BasicCodec::startReadMessage(message_type_t *type, uint32_t *service, Hash*
         else{
             *type = kFastMessage;
         }
-        *service = static_cast<uint32_t>(bitset.to_ullong()); 
+        *service = static_cast<uint32_t>(bitset.to_ulong());
     }
 }
 
