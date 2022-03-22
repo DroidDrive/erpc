@@ -261,7 +261,7 @@ codec->writeBinary({% if source == "client" && info.pointerScalarTypes %}*{% end
 {% if source == "client" && info.pointerScalarTypes %}
 codec->write(static_cast<int32_t>(*{$info.name}));
 {% else %}
-codec->write(static_cast<int32_t>({$info.name}));
+codec->write(static_cast<uint8_t>({$info.name}));
 {% endif -- pointerScalarTypes %}
 {% enddef --------------------------------------- Enum %}
 
