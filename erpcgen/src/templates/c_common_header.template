@@ -46,15 +46,16 @@ using namespace erpc;
 {% if enum.name != "" %}
 {% endif %}
 {$> enum.mlComment}
-{%   if enum.name %}typedef {% endif --enum.name  %}enum{$addIndent(" ", enum.name)}
+{%   if enum.name %}{% endif --enum.name  %}enum class {$addIndent(" ", enum.name)} : uint8_t
 {
 {%   for enumMember in enum.members %}
 {$> addIndent("    ", enumMember.mlComment)}
     {$enumMember.memberDeclaration}{$enumMember.ilComment}
 {%   endfor -- enumsMembers %}
-}{$addIndent(" ", enum.name)};{$enum.ilComment}{$loop.addNewLineIfNotLast}
+};
 {%  endfor -- enums %}
 {% endif -- enums %}
+
 {% if not empty(aliases) %}
 
 // Aliases data types declarations
