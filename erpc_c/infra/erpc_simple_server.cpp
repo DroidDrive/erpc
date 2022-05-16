@@ -165,7 +165,9 @@ erpc_status_t SimpleServer::runInternalEnd(Codec *codec, message_type_t msgType,
             m_state = State::PROCESS_DONE;
         }
         else{
-            return kErpcStatus_Fail;
+            err = kErpcStatus_Fail;
+            // Dispose of buffers and codecs.
+            disposeBufferAndCodec(codec);
         }
     }
 
