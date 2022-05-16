@@ -79,7 +79,7 @@ ERPC_MANUALLY_CONSTRUCTED_STATIC({$iface.serviceClassName}, s_{$iface.serviceCla
     bool isNull;
 {% endif -- needNullVariableOnServer %}
 {% if fn.needTempVariableServer %}
-    int32_t _tmp_local;
+    uint8_t _tmp_local;
 {% endif %}
 {% if fn.returnValue.type.isNotVoid %}
     {$fn.returnValue.resultVariable}{% if fn.returnValue.isNullReturnType %} = NULL{%endif%};
