@@ -86,7 +86,6 @@ bool ClientManager::performClientRequest(RequestContext &request)
         err = m_transport->send(request.getChannel(), request.getCodec()->getBuffer());
         if( err == kErpcStatus_Success){
             request.setState(RequestContextState::SENT);
-            return false;
         }
         else if (err == kErpcStatus_Pending){
             return false;
